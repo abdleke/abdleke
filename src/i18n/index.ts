@@ -1,0 +1,35 @@
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import LanguageDetector from 'i18next-browser-languagedetector';
+import ar from './locales/ar';
+import fr from './locales/fr';
+import en from './locales/en';
+
+i18n
+  .use(LanguageDetector)
+  .use(initReactI18next)
+  .init({
+    resources: {
+      ar: { translation: ar },
+      fr: { translation: fr },
+      en: { translation: en },
+    },
+    fallbackLng: 'ar',
+    lng: 'ar',
+    interpolation: { escapeValue: false },
+    detection: {
+      order: ['localStorage', 'navigator'],
+      caches: ['localStorage'],
+    },
+  });
+
+i18n.on('languageChanged', (lng) => {
+  document.documentElement.lang = lng;
+  document.documentElement.dir = lng === 'ar' ? 'rtl' : 'ltr';
+});
+
+// Apply on init
+document.documentElement.lang = i18n.language;
+document.documentElement.dir = i18n.language === 'ar' ? 'rtl' : 'ltr';
+
+export default i18n;
