@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'firebase_options.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'supabase_config.dart';
 import 'providers/app_provider.dart';
 import 'app.dart';
 
@@ -12,14 +12,14 @@ void main() async {
     const SystemUiOverlayStyle(statusBarBrightness: Brightness.light),
   );
 
-  // Try Firebase — if firebase_options.dart has placeholder values or
-  // network is unavailable, we catch the error and run in offline mode.
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    debugPrint('[Jamiyati] Firebase non configuré — mode hors-ligne: $e');
+  // Initialiser Supabase uniquement si les clés sont renseignées.
+  // Sinon l'app fonctionne en mode hors-ligne (données locales).
+  if (supabaseConfigured) {
+    try {
+      await Supabase.initialize(url: supabaseUrl, anonKey: supabaseAnonKey);
+    } catch (e) {
+      debugPrint('[Jamiyati] Supabase non disponible — mode hors-ligne: $e');
+    }
   }
 
   final provider = AppProvider();
