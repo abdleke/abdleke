@@ -1,13 +1,7 @@
-// ⚠️  CONFIGURATION REQUISE — voir SUPABASE_SETUP.md
-//
-// Remplacez les deux valeurs ci-dessous par celles de votre projet Supabase.
-// Supabase Dashboard → Settings → API → Project URL & anon key
-//
-// Tant que ces valeurs ne sont pas renseignées, l'application fonctionne
-// en mode hors-ligne (données locales uniquement).
+// Configuration Supabase
 
-const supabaseUrl     = 'VOTRE_SUPABASE_URL';
-const supabaseAnonKey = 'VOTRE_SUPABASE_ANON_KEY';
+const supabaseUrl     = 'https://ygwaorqfoyxqzmqoaapc.supabase.co';
+const supabaseAnonKey = 'sb_publishable_oQ0qgV8jkp7ByfsKAS1Iyg_Q_mAjHV3';
 
-// Ne pas modifier — utilisé pour détecter si Supabase est configuré.
+// Ne pas modifier — utilise pour detecter si Supabase est configure.
 const supabaseConfigured = supabaseUrl != 'VOTRE_SUPABASE_URL';
