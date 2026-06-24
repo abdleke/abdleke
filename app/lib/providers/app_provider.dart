@@ -15,8 +15,9 @@ class AppProvider extends ChangeNotifier {
   List<Project> _projects = [];
   List<Depense> _depenses = [];
   List<Cotisation> _cotisations = [];
-  String _currentUserId = SeedData.defaultUserId;
+  String _currentUserId = '';
   String _language = 'ar';
+  bool _isLoggedIn = false;
 
   List<Member> get members => List.unmodifiable(_members);
   List<Project> get projects => List.unmodifiable(_projects);
@@ -24,16 +25,53 @@ class AppProvider extends ChangeNotifier {
   List<Cotisation> get cotisations => List.unmodifiable(_cotisations);
   String get currentUserId => _currentUserId;
   String get language => _language;
+  bool get isLoggedIn => _isLoggedIn;
 
   Member? get currentUser =>
       _members.cast<Member?>().firstWhere((m) => m?.id == _currentUserId, orElse: () => null);
 
-  String tr(String key, [Map<String, String>? args]) {
-    // Import AppStrings at usage site
-    final map = _getStrings()[_language] ?? _getStrings()['ar']!;
-    var result = map[key] ?? _getStrings()['ar']?[key] ?? key;
-    args?.forEach((k, v) => result = result.replaceAll('{$k}', v));
-    return result;
+  // ── Authentication ────────────────────────────────────────────
+  // Returns null on success, error message on failure
+  String? login(String identifier, String password) {
+    final id = identifier.trim();
+    final pass = password.trim();
+    if (id.isEmpty || pass.isEmpty) return _err('emptyFields');
+
+    final member = _members.cast<Member?>().firstWhere(
+      (m) => m != null && (
+        m.telephone == id ||
+        m.email == id ||
+        m.id == id
+      ),
+      orElse: () => null,
+    );
+
+    if (member == null) return _err('notFound');
+    if (member.statut == MemberStatus.suspendu) return _err('suspended');
+    if (member.motDePasse != pass) return _err('wrongPassword');
+
+    _currentUserId = member.id;
+    _isLoggedIn = true;
+    _persistAuth();
+    notifyListeners();
+    return null;
+  }
+
+  void logout() {
+    _isLoggedIn = false;
+    _currentUserId = '';
+    _persistAuth();
+    notifyListeners();
+  }
+
+  String _err(String code) {
+    const msgs = {
+      'emptyFields': 'الرجاء ملء جميع الحقول',
+      'notFound': 'المستخدم غير موجود',
+      'suspended': 'هذا الحساب موقوف',
+      'wrongPassword': 'كلمة المرور غير صحيحة',
+    };
+    return msgs[code] ?? code;
   }
 
   // ── Permissions ───────────────────────────────────────────────
@@ -71,15 +109,9 @@ class AppProvider extends ChangeNotifier {
     return p?.nom ?? '—';
   }
 
-  // ── Language & User ───────────────────────────────────────────
+  // ── Language ──────────────────────────────────────────────────
   void setLanguage(String lang) {
     _language = lang;
-    _persist();
-    notifyListeners();
-  }
-
-  void setCurrentUser(String id) {
-    _currentUserId = id;
     _persist();
     notifyListeners();
   }
@@ -156,6 +188,8 @@ class AppProvider extends ChangeNotifier {
   // ── Persistence ───────────────────────────────────────────────
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
+    _language = prefs.getString('jamiyati_lang') ?? 'ar';
+
     final raw = prefs.getString('jamiyati_data');
     if (raw != null) {
       try {
@@ -164,42 +198,47 @@ class AppProvider extends ChangeNotifier {
         _projects = (data['projects'] as List).map((e) => Project.fromJson(e as Map<String, dynamic>)).toList();
         _depenses = (data['depenses'] as List).map((e) => Depense.fromJson(e as Map<String, dynamic>)).toList();
         _cotisations = (data['cotisations'] as List).map((e) => Cotisation.fromJson(e as Map<String, dynamic>)).toList();
-        _currentUserId = data['currentUserId'] as String? ?? SeedData.defaultUserId;
-        _language = data['language'] as String? ?? 'ar';
-        return;
       } catch (_) {
-        // fall through to seed data
+        _loadSeed();
       }
+    } else {
+      _loadSeed();
     }
+
+    // Restore session
+    final savedUserId = prefs.getString('jamiyati_session');
+    if (savedUserId != null && _members.any((m) => m.id == savedUserId)) {
+      _currentUserId = savedUserId;
+      _isLoggedIn = true;
+    }
+  }
+
+  void _loadSeed() {
     _members = SeedData.members();
     _projects = SeedData.projects();
     _depenses = SeedData.depenses();
     _cotisations = SeedData.cotisations();
-    _currentUserId = SeedData.defaultUserId;
-    _language = 'ar';
   }
 
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('jamiyati_lang', _language);
     await prefs.setString('jamiyati_data', jsonEncode({
       'members': _members.map((m) => m.toJson()).toList(),
       'projects': _projects.map((p) => p.toJson()).toList(),
       'depenses': _depenses.map((d) => d.toJson()).toList(),
       'cotisations': _cotisations.map((c) => c.toJson()).toList(),
-      'currentUserId': _currentUserId,
-      'language': _language,
     }));
+  }
+
+  Future<void> _persistAuth() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (_isLoggedIn) {
+      await prefs.setString('jamiyati_session', _currentUserId);
+    } else {
+      await prefs.remove('jamiyati_session');
+    }
   }
 
   String newId() => _uuid.v4();
 }
-
-// Inline strings (avoids separate import in provider)
-Map<String, Map<String, String>> _getStrings() => const {
-  'ar': {'members.role.admin': 'مدير', 'members.role.tresorier': 'أمين المال',
-    'members.role.chefProjet': 'مسؤول مشروع', 'members.role.membre': 'عضو'},
-  'fr': {'members.role.admin': 'Administrateur', 'members.role.tresorier': 'Trésorier',
-    'members.role.chefProjet': 'Chef de projet', 'members.role.membre': 'Membre'},
-  'en': {'members.role.admin': 'Administrator', 'members.role.tresorier': 'Treasurer',
-    'members.role.chefProjet': 'Project manager', 'members.role.membre': 'Member'},
-};

@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'providers/app_provider.dart';
 import 'theme/app_theme.dart';
 import 'screens/main_screen.dart';
+import 'screens/login_screen.dart';
 
 class JamiyatiApp extends StatelessWidget {
   const JamiyatiApp({super.key});
@@ -28,7 +29,7 @@ class JamiyatiApp extends StatelessWidget {
         GlobalWidgetsLocalizations.delegate,
         GlobalCupertinoLocalizations.delegate,
       ],
-      home: const MainScreen(),
+      home: provider.isLoggedIn ? const MainScreen() : const LoginScreen(),
     );
   }
 }

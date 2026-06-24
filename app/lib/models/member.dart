@@ -11,6 +11,7 @@ class Member {
   final String dateAdhesion;
   final MemberStatus statut;
   final MemberRole role;
+  final String motDePasse;
 
   const Member({
     required this.id,
@@ -21,11 +22,17 @@ class Member {
     String? dateAdhesion,
     required this.statut,
     required this.role,
-  }) : dateAdhesion = dateAdhesion ?? '';
+    String? motDePasse,
+  })  : dateAdhesion = dateAdhesion ?? '',
+        motDePasse = motDePasse ?? '1234';
 
   String get fullName => '$prenom $nom';
   String get initials =>
       '${prenom.isNotEmpty ? prenom[0] : ''}${nom.isNotEmpty ? nom[0] : ''}';
+
+  // Login identifier: phone if available, otherwise email, otherwise id
+  String get loginId =>
+      (telephone?.isNotEmpty == true) ? telephone! : (email?.isNotEmpty == true ? email! : id);
 
   factory Member.fromJson(Map<String, dynamic> json) => Member(
         id: json['id'] as String,
@@ -39,6 +46,7 @@ class Member {
           orElse: () => MemberStatus.actif,
         ),
         role: _roleFromString(json['role'] as String),
+        motDePasse: json['motDePasse'] as String? ?? '1234',
       );
 
   Map<String, dynamic> toJson() => {
@@ -50,6 +58,7 @@ class Member {
         'dateAdhesion': dateAdhesion,
         'statut': statut.name,
         'role': _roleToString(role),
+        'motDePasse': motDePasse,
       };
 
   Member copyWith({
@@ -61,6 +70,7 @@ class Member {
     String? dateAdhesion,
     MemberStatus? statut,
     MemberRole? role,
+    String? motDePasse,
   }) =>
       Member(
         id: id ?? this.id,
@@ -71,6 +81,7 @@ class Member {
         dateAdhesion: dateAdhesion ?? this.dateAdhesion,
         statut: statut ?? this.statut,
         role: role ?? this.role,
+        motDePasse: motDePasse ?? this.motDePasse,
       );
 
   static MemberRole _roleFromString(String s) {

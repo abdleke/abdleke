@@ -10,32 +10,38 @@ class SeedData {
         const Member(
           id: 'm1', prenom: 'أحمد', nom: 'بن علي',
           email: 'ahmed.benali@email.com', telephone: '0661234567',
-          dateAdhesion: '2022-01-15', statut: MemberStatus.actif, role: MemberRole.admin,
+          dateAdhesion: '2022-01-15', statut: MemberStatus.actif,
+          role: MemberRole.admin, motDePasse: 'admin123',
         ),
         const Member(
           id: 'm2', prenom: 'فاطمة', nom: 'الزهراء',
           email: 'fatima.zahra@email.com', telephone: '0662345678',
-          dateAdhesion: '2022-02-20', statut: MemberStatus.actif, role: MemberRole.tresorier,
+          dateAdhesion: '2022-02-20', statut: MemberStatus.actif,
+          role: MemberRole.tresorier, motDePasse: 'treso123',
         ),
         const Member(
           id: 'm3', prenom: 'محمد', nom: 'أمين',
           email: 'mohammed.amine@email.com', telephone: '0663456789',
-          dateAdhesion: '2022-03-10', statut: MemberStatus.actif, role: MemberRole.chefProjet,
+          dateAdhesion: '2022-03-10', statut: MemberStatus.actif,
+          role: MemberRole.chefProjet, motDePasse: '1234',
         ),
         const Member(
           id: 'm4', prenom: 'سارة', nom: 'حمدان',
           email: 'sara.hamdan@email.com', telephone: '0664567890',
-          dateAdhesion: '2022-04-05', statut: MemberStatus.actif, role: MemberRole.membre,
+          dateAdhesion: '2022-04-05', statut: MemberStatus.actif,
+          role: MemberRole.membre, motDePasse: '1234',
         ),
         const Member(
           id: 'm5', prenom: 'يوسف', nom: 'بنعمر',
           email: 'youssef.benamar@email.com', telephone: '0665678901',
-          dateAdhesion: '2022-05-15', statut: MemberStatus.actif, role: MemberRole.membre,
+          dateAdhesion: '2022-05-15', statut: MemberStatus.actif,
+          role: MemberRole.membre, motDePasse: '1234',
         ),
         const Member(
           id: 'm6', prenom: 'نور', nom: 'الهدى',
           email: 'nour.elhoda@email.com', telephone: '0666789012',
-          dateAdhesion: '2023-01-10', statut: MemberStatus.inactif, role: MemberRole.membre,
+          dateAdhesion: '2023-01-10', statut: MemberStatus.inactif,
+          role: MemberRole.membre, motDePasse: '1234',
         ),
       ];
 

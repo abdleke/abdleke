@@ -196,9 +196,10 @@ class _MemberForm extends StatefulWidget {
 
 class _MemberFormState extends State<_MemberForm> {
   final _key = GlobalKey<FormState>();
-  late String _prenom, _nom, _email, _telephone;
+  late String _prenom, _nom, _email, _telephone, _motDePasse;
   MemberRole _role = MemberRole.membre;
   MemberStatus _statut = MemberStatus.actif;
+  bool _obscure = true;
 
   @override
   void initState() {
@@ -208,6 +209,7 @@ class _MemberFormState extends State<_MemberForm> {
     _nom = m?.nom ?? '';
     _email = m?.email ?? '';
     _telephone = m?.telephone ?? '';
+    _motDePasse = m?.motDePasse ?? '1234';
     _role = m?.role ?? MemberRole.membre;
     _statut = m?.statut ?? MemberStatus.actif;
   }
@@ -237,6 +239,25 @@ class _MemberFormState extends State<_MemberForm> {
               ]),
               _field(s('members.email'), initial: _email, onSave: (v) => _email = v ?? ''),
               _field(s('members.phone'), initial: _telephone, onSave: (v) => _telephone = v ?? '', keyboardType: TextInputType.phone),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: TextFormField(
+                  initialValue: _motDePasse,
+                  obscureText: _obscure,
+                  decoration: InputDecoration(
+                    labelText: s('auth.password'),
+                    labelStyle: GoogleFonts.cairo(),
+                    prefixIcon: const Icon(Icons.lock_outline_rounded, size: 20),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscure ? Icons.visibility_off_rounded : Icons.visibility_rounded, size: 20),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                  ),
+                  style: GoogleFonts.cairo(),
+                  validator: (v) => (v?.isEmpty == true) ? '⚠' : null,
+                  onSaved: (v) => _motDePasse = v ?? '1234',
+                ),
+              ),
               Row(children: [
                 Expanded(child: _dropdown<MemberRole>(
                   label: s('members.role'),
@@ -276,6 +297,7 @@ class _MemberFormState extends State<_MemberForm> {
                       telephone: _telephone.isEmpty ? null : _telephone,
                       dateAdhesion: widget.existing?.dateAdhesion ?? DateTime.now().toIso8601String().split('T')[0],
                       role: _role, statut: _statut,
+                      motDePasse: _motDePasse,
                     );
                     if (widget.existing != null) prov.updateMember(member); else prov.addMember(member);
                     Navigator.pop(context);

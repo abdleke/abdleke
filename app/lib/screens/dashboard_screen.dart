@@ -61,7 +61,7 @@ class DashboardScreen extends StatelessWidget {
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportsScreen())),
           ),
           _LangButton(),
-          _UserButton(),
+          _LogoutButton(),
           const SizedBox(width: 4),
         ],
       ),
@@ -343,12 +343,11 @@ class _LangButton extends StatelessWidget {
   }
 }
 
-class _UserButton extends StatelessWidget {
+class _LogoutButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prov = context.watch<AppProvider>();
     final user = prov.currentUser;
-    final activeMembers = prov.members.where((m) => m.statut.name == 'actif').toList();
     return PopupMenuButton<String>(
       icon: Container(
         width: 32,
@@ -364,17 +363,30 @@ class _UserButton extends StatelessWidget {
           ),
         ),
       ),
-      onSelected: prov.setCurrentUser,
-      itemBuilder: (_) => activeMembers.map((m) => PopupMenuItem(
-        value: m.id,
-        child: Row(
-          children: [
-            MemberAvatar(initials: m.initials, size: 28),
-            const SizedBox(width: 8),
-            Text('${m.prenom} ${m.nom}', style: GoogleFonts.cairo(fontSize: 13)),
-          ],
+      itemBuilder: (_) => [
+        PopupMenuItem(
+          enabled: false,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(user?.fullName ?? '', style: GoogleFonts.cairo(fontWeight: FontWeight.w700, fontSize: 14)),
+              Text(user?.telephone ?? user?.email ?? '', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textSecondary)),
+            ],
+          ),
         ),
-      )).toList(),
+        const PopupMenuDivider(),
+        PopupMenuItem(
+          value: 'logout',
+          onTap: () => prov.logout(),
+          child: Row(
+            children: [
+              Icon(Icons.logout_rounded, size: 18, color: AppTheme.danger),
+              const SizedBox(width: 8),
+              Text('تسجيل الخروج', style: GoogleFonts.cairo(color: AppTheme.danger, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }
