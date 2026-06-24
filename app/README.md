@@ -6,76 +6,38 @@ Application Flutter de gestion financière pour associations (dépenses, cotisat
 
 - Flutter SDK ≥ 3.3.0 ([installation](https://docs.flutter.dev/get-started/install))
 - Android Studio + NDK (pour APK Android)
-- Xcode (pour iOS, Mac uniquement)
 
-## Installation & Build
+## Installation & Build (Windows)
 
-### 1. Cloner le dépôt et aller dans le dossier app
+### Option rapide — script automatique
 
-```bash
-cd app/
+Ouvre PowerShell dans le dossier `app/` et lance :
+
+```powershell
+.\setup.ps1
 ```
 
-### 2. Générer le scaffolding natif
+Le script fait tout automatiquement : génération du projet, configuration des permissions, `flutter pub get`. Ensuite :
 
-```bash
-flutter create . --project-name jamiyati --org com.jamiyati
-```
-
-> ⚠️ Répondez **"y"** si Flutter demande de remplacer des fichiers existants.
-
-### 3. Installer les dépendances
-
-```bash
-flutter pub get
-```
-
-### 4. Configurer url_launcher (WhatsApp & appels)
-
-Ouvrez `android/app/src/main/AndroidManifest.xml` et ajoutez dans la balise `<manifest>` (avant `<application>`) :
-
-```xml
-<uses-permission android:name="android.permission.INTERNET" />
-<queries>
-    <intent>
-        <action android:name="android.intent.action.VIEW" />
-        <data android:scheme="https" />
-    </intent>
-    <intent>
-        <action android:name="android.intent.action.DIAL" />
-        <data android:scheme="tel" />
-    </intent>
-    <package android:name="com.whatsapp" />
-</queries>
-```
-
-Pour iOS, dans `ios/Runner/Info.plist`, ajoutez avant `</dict>` :
-
-```xml
-<key>LSApplicationQueriesSchemes</key>
-<array>
-    <string>whatsapp</string>
-    <string>tel</string>
-</array>
-```
-
-### 5. Builder l'APK (Android)
-
-```bash
-# Debug (test rapide)
-flutter build apk --debug
-
-# Release (optimisé)
+```powershell
 flutter build apk --release
 ```
 
-L'APK se trouve dans : `build/app/outputs/flutter-apk/app-release.apk`
+L'APK sera dans : `build\app\outputs\flutter-apk\app-release.apk`
 
-### 6. Builder pour iOS
+---
 
-```bash
-flutter build ios --release
-# Puis ouvrir dans Xcode pour archiver et distribuer
+### Étapes manuelles (si le script ne fonctionne pas)
+
+```powershell
+# 1. Générer le scaffolding natif
+flutter create . --project-name jamiyati --org com.jamiyati
+
+# 2. Installer les dépendances
+flutter pub get
+
+# 3. Builder l'APK
+flutter build apk --release
 ```
 
 ## Fonctionnalités
