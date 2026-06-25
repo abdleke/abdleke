@@ -82,7 +82,7 @@ class _ProfileHeader extends StatelessWidget {
     return Center(
       child: Column(
         children: [
-          MemberAvatar(name: user.fullName, size: 72),
+          MemberAvatar(initials: user.initials, size: 72),
           const SizedBox(height: 12),
           Text(user.fullName, style: GoogleFonts.cairo(fontSize: 22, fontWeight: FontWeight.w800)),
           const SizedBox(height: 4),
