@@ -5,8 +5,7 @@ import '../l10n/strings.dart';
 import 'dashboard_screen.dart';
 import 'projects_screen.dart';
 import 'cotisations_screen.dart';
-import 'members_screen.dart';
-import 'reminders_screen.dart';
+import 'profile_screen.dart';
 
 class MainScreen extends StatefulWidget {
   const MainScreen({super.key});
@@ -22,8 +21,7 @@ class _MainScreenState extends State<MainScreen> {
     DashboardScreen(),
     ProjectsScreen(),
     CotisationsScreen(),
-    MembersScreen(),
-    RemindersScreen(),
+    ProfileScreen(),
   ];
 
   @override
@@ -40,8 +38,7 @@ class _MainScreenState extends State<MainScreen> {
           NavigationDestination(icon: const Icon(Icons.dashboard_rounded), label: s('nav.dashboard', lang)),
           NavigationDestination(icon: const Icon(Icons.folder_open_rounded), label: s('nav.projects', lang)),
           NavigationDestination(icon: const Icon(Icons.credit_card_rounded), label: s('nav.cotisations', lang)),
-          NavigationDestination(icon: const Icon(Icons.group_rounded), label: s('nav.members', lang)),
-          NavigationDestination(icon: const Icon(Icons.notifications_rounded), label: s('nav.reminders', lang)),
+          NavigationDestination(icon: const Icon(Icons.person_rounded), label: s('nav.profile', lang)),
         ],
       ),
     );

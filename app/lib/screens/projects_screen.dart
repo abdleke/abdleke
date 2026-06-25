@@ -27,7 +27,7 @@ class ProjectsScreen extends StatelessWidget {
               label: Text(s('projects.add'), style: GoogleFonts.cairo()),
             )
           : null,
-      body: prov.projects.isEmpty
+      body: prov.visibleProjects.isEmpty
           ? EmptyState(
               icon: Icons.folder_open_rounded,
               message: s('projects.noProjects'),
@@ -36,10 +36,10 @@ class ProjectsScreen extends StatelessWidget {
             )
           : ListView.separated(
               padding: const EdgeInsets.all(16),
-              itemCount: prov.projects.length,
+              itemCount: prov.visibleProjects.length,
               separatorBuilder: (_, __) => const SizedBox(height: 12),
               itemBuilder: (ctx, i) {
-                final p = prov.projects[i];
+                final p = prov.visibleProjects[i];
                 final spent = prov.getProjectSpent(p.id);
                 final manager = prov.members.cast<dynamic>().firstWhere(
                   (m) => m.id == p.responsableId, orElse: () => null);
@@ -130,15 +130,15 @@ class _ProjectCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: project.type == ProjectType.periodique ? AppTheme.primaryLight : AppTheme.infoLight,
+                              color: project.type == ProjectType.ponctuel ? AppTheme.primaryLight : AppTheme.infoLight,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              project.type == ProjectType.periodique ? s('projects.periodic') : s('projects.standard'),
+                              project.type == ProjectType.ponctuel ? s('projects.ponctuel') : s('projects.standard'),
                               style: GoogleFonts.cairo(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: project.type == ProjectType.periodique ? AppTheme.primary : AppTheme.info,
+                                color: project.type == ProjectType.ponctuel ? AppTheme.primary : AppTheme.info,
                               ),
                             ),
                           ),
@@ -282,7 +282,7 @@ class _ProjectFormState extends State<_ProjectForm> {
                           value: _type,
                           items: [
                             DropdownMenuItem(value: ProjectType.standard, child: Text(s('projects.standard'), style: GoogleFonts.cairo())),
-                            DropdownMenuItem(value: ProjectType.periodique, child: Text(s('projects.periodic'), style: GoogleFonts.cairo())),
+                            DropdownMenuItem(value: ProjectType.ponctuel, child: Text(s('projects.ponctuel'), style: GoogleFonts.cairo())),
                           ],
                           onChanged: (v) => setState(() => _type = v!),
                         )),
@@ -301,7 +301,7 @@ class _ProjectFormState extends State<_ProjectForm> {
                       const SizedBox(height: 12),
                       Row(children: [
                         Expanded(child: _field(s('projects.budget'), initial: _budget > 0 ? _budget.toStringAsFixed(0) : '', keyboardType: TextInputType.number, onSave: (v) => _budget = double.tryParse(v ?? '0') ?? 0)),
-                        if (_type == ProjectType.periodique) ...[
+                        if (_type == ProjectType.ponctuel) ...[
                           const SizedBox(width: 12),
                           Expanded(child: _field(s('projects.dedicatedFee'), initial: _cotisationDediee?.toStringAsFixed(0) ?? '', keyboardType: TextInputType.number, onSave: (v) => _cotisationDediee = double.tryParse(v ?? ''))),
                         ],
@@ -335,7 +335,7 @@ class _ProjectFormState extends State<_ProjectForm> {
                               type: _type, budget: _budget,
                               dateDebut: _dateDebut, dateFin: _dateFin,
                               statut: _statut, responsableId: _responsableId,
-                              cotisationDediee: _type == ProjectType.periodique ? _cotisationDediee : null,
+                              cotisationDediee: _type == ProjectType.ponctuel ? _cotisationDediee : null,
                             );
                             if (widget.existing != null) prov.updateProject(project); else prov.addProject(project);
                             Navigator.pop(ctx);

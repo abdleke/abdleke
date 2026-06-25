@@ -231,9 +231,38 @@ class AppProvider extends ChangeNotifier {
 
   bool canManageMembers() => currentUser?.role == MemberRole.admin;
 
-  bool canManageProjects() =>
+  bool canManageProjects() => currentUser?.role == MemberRole.admin;
+
+  bool canAddCotisation() =>
       currentUser?.role == MemberRole.admin ||
       currentUser?.role == MemberRole.tresorier;
+
+  List<Project> get visibleProjects {
+    final user = currentUser;
+    if (user == null) return [];
+    if (user.role == MemberRole.admin || user.role == MemberRole.tresorier) {
+      return List.unmodifiable(_projects);
+    }
+    return List.unmodifiable(_projects.where((p) => p.responsableId == user.id));
+  }
+
+  List<Cotisation> get visibleCotisations {
+    final user = currentUser;
+    if (user == null) return [];
+    if (user.role == MemberRole.admin || user.role == MemberRole.tresorier) {
+      return List.unmodifiable(_cotisations);
+    }
+    return List.unmodifiable(_cotisations.where((c) => c.membreId == user.id));
+  }
+
+  List<Member> get visibleMembers {
+    final user = currentUser;
+    if (user == null) return [];
+    if (user.role == MemberRole.admin || user.role == MemberRole.tresorier) {
+      return List.unmodifiable(_members);
+    }
+    return List.unmodifiable(_members.where((m) => m.id == user.id));
+  }
 
   // ── Helpers ───────────────────────────────────────────────────
 

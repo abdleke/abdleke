@@ -18,6 +18,13 @@ class MembersScreen extends StatelessWidget {
     final lang = prov.language;
     final s = (String k) => AppStrings.get(k, lang);
 
+    if (!prov.canManageMembers()) {
+      return Scaffold(
+        appBar: AppBar(title: Text(s('members.title'))),
+        body: Center(child: Text(s('common.noData'), style: GoogleFonts.cairo(color: AppTheme.textSecondary))),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(title: Text(s('members.title'))),
       floatingActionButton: prov.canManageMembers()

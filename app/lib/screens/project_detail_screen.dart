@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
+import '../models/project.dart';
 import '../models/depense.dart';
 import '../theme/app_theme.dart';
 import '../widgets/budget_bar.dart';
@@ -118,7 +119,7 @@ class _InfoCard extends StatelessWidget {
           _row(s('projects.manager'), manager?.fullName ?? '—'),
           _row(s('projects.startDate'), project.dateDebut),
           if (project.dateFin != null) _row(s('projects.endDate'), project.dateFin),
-          _row(s('projects.type'), project.type.name == 'periodique' ? s('projects.periodic') : s('projects.standard')),
+          _row(s('projects.type'), project.type == ProjectType.ponctuel ? s('projects.ponctuel') : s('projects.standard')),
           const SizedBox(height: 16),
           Text(s('projects.budgetUsage'), style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),

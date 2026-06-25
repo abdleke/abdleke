@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
 import '../models/cotisation.dart';
+import '../models/project.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/empty_state.dart';
@@ -21,7 +22,7 @@ class _CotisationsScreenState extends State<CotisationsScreen> with SingleTicker
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -36,9 +37,9 @@ class _CotisationsScreenState extends State<CotisationsScreen> with SingleTicker
     final lang = prov.language;
     final s = (String k) => AppStrings.get(k, lang);
 
-    final pending = prov.cotisations.where((c) => c.statut == CotisationStatus.enAttente).toList();
-    final validated = prov.cotisations.where((c) => c.statut == CotisationStatus.validee).toList();
-    final overdue = prov.cotisations.where((c) => c.statut == CotisationStatus.enRetard).toList();
+    final visible = prov.visibleCotisations;
+    final global = visible.where((c) => c.type == CotisationType.normale).toList();
+    final dedicated = visible.where((c) => c.type == CotisationType.dediee).toList();
 
     return Scaffold(
       appBar: AppBar(
@@ -51,25 +52,24 @@ class _CotisationsScreenState extends State<CotisationsScreen> with SingleTicker
           unselectedLabelColor: Colors.white70,
           indicatorColor: Colors.white,
           tabs: [
-            Tab(text: '${s('cotisations.pending')} (${pending.length})'),
-            Tab(text: s('cotisations.validated')),
-            Tab(text: '${s('cotisations.overdue')} (${overdue.length})'),
+            Tab(text: '${s('cotisations.tab.global')} (${global.length})'),
+            Tab(text: '${s('cotisations.tab.projects')} (${dedicated.length})'),
           ],
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: s('cotisations.add'),
-            onPressed: () => _showForm(context, prov, lang, null),
-          ),
+          if (prov.canAddCotisation())
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: s('cotisations.add'),
+              onPressed: () => _showForm(context, prov, lang, null),
+            ),
         ],
       ),
       body: TabBarView(
         controller: _tab,
         children: [
-          _CotisationList(cotisations: pending, prov: prov, lang: lang, canValidate: prov.canValidateCotisation()),
-          _CotisationList(cotisations: validated, prov: prov, lang: lang),
-          _CotisationList(cotisations: overdue, prov: prov, lang: lang, canValidate: prov.canValidateCotisation()),
+          _CotisationList(cotisations: global, prov: prov, lang: lang, canValidate: prov.canValidateCotisation()),
+          _CotisationList(cotisations: dedicated, prov: prov, lang: lang, canValidate: prov.canValidateCotisation(), showProject: true),
         ],
       ),
     );
@@ -89,8 +89,15 @@ class _CotisationList extends StatelessWidget {
   final AppProvider prov;
   final String lang;
   final bool canValidate;
+  final bool showProject;
 
-  const _CotisationList({required this.cotisations, required this.prov, required this.lang, this.canValidate = false});
+  const _CotisationList({
+    required this.cotisations,
+    required this.prov,
+    required this.lang,
+    this.canValidate = false,
+    this.showProject = false,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -136,6 +143,7 @@ class _CotisationList extends StatelessWidget {
         switch (c.frequence) {
           case CotisationFrequence.mensuelle: freqLabel = s('cotisations.freq.monthly'); break;
           case CotisationFrequence.trimestrielle: freqLabel = s('cotisations.freq.quarterly'); break;
+          case CotisationFrequence.unique: freqLabel = s('cotisations.freq.unique'); break;
           default: freqLabel = s('cotisations.freq.annual');
         }
 
@@ -151,6 +159,14 @@ class _CotisationList extends StatelessWidget {
                   StatusBadge(label: statusLabel, variant: bv),
                 ],
               ),
+              if (showProject && c.projetId != null) ...[
+                const SizedBox(height: 4),
+                Row(children: [
+                  Icon(Icons.folder_outlined, size: 12, color: AppTheme.primary),
+                  const SizedBox(width: 4),
+                  Text(prov.getProjectName(c.projetId!), style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600)),
+                ]),
+              ],
               const SizedBox(height: 6),
               Row(
                 children: [
@@ -184,14 +200,14 @@ class _CotisationList extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(child: OutlinedButton.icon(
-                      onPressed: () => _markOverdue(context, c.id),
+                      onPressed: () => context.read<AppProvider>().markCotisationOverdue(c.id),
                       style: OutlinedButton.styleFrom(foregroundColor: AppTheme.danger, side: BorderSide(color: AppTheme.danger)),
                       icon: const Icon(Icons.warning_amber_rounded, size: 16),
                       label: Text(s('cotisations.markOverdue'), style: GoogleFonts.cairo(fontSize: 12)),
                     )),
                     const SizedBox(width: 8),
                     Expanded(child: ElevatedButton.icon(
-                      onPressed: () { context.read<AppProvider>().validateCotisation(c.id); },
+                      onPressed: () => context.read<AppProvider>().validateCotisation(c.id),
                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
                       icon: const Icon(Icons.check_rounded, size: 16),
                       label: Text(s('cotisations.validate'), style: GoogleFonts.cairo(fontSize: 12)),
@@ -204,10 +220,6 @@ class _CotisationList extends StatelessWidget {
         );
       },
     );
-  }
-
-  void _markOverdue(BuildContext context, String id) {
-    context.read<AppProvider>().markCotisationOverdue(id);
   }
 }
 
@@ -226,6 +238,8 @@ class _CotisationFormState extends State<_CotisationForm> {
   double _montant = 0;
   int _annee = DateTime.now().year;
   CotisationFrequence _frequence = CotisationFrequence.annuelle;
+  CotisationType _type = CotisationType.normale;
+  String? _projetId;
 
   @override
   void initState() {
@@ -236,6 +250,8 @@ class _CotisationFormState extends State<_CotisationForm> {
     _montant = c?.montant ?? 0;
     _annee = c?.annee ?? DateTime.now().year;
     _frequence = c?.frequence ?? CotisationFrequence.annuelle;
+    _type = c?.type ?? CotisationType.normale;
+    _projetId = c?.projetId;
   }
 
   @override
@@ -244,6 +260,7 @@ class _CotisationFormState extends State<_CotisationForm> {
     final lang = widget.lang;
     final s = (String k) => AppStrings.get(k, lang);
     final allMembers = prov.members;
+    final ponctuelProjects = prov.projects.where((p) => p.type == ProjectType.ponctuel && p.statut == ProjectStatus.actif).toList();
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -261,10 +278,32 @@ class _CotisationFormState extends State<_CotisationForm> {
                 value: _membreId.isNotEmpty ? _membreId : null,
                 decoration: InputDecoration(labelText: s('cotisations.member'), labelStyle: GoogleFonts.cairo()),
                 items: allMembers.map((m) => DropdownMenuItem(value: m.id, child: Text(m.fullName, style: GoogleFonts.cairo()))).toList(),
-                onChanged: (v) => _membreId = v ?? '',
+                onChanged: (v) => setState(() => _membreId = v ?? ''),
                 validator: (v) => (v == null || v.isEmpty) ? '⚠' : null,
                 style: GoogleFonts.cairo(color: AppTheme.textPrimary),
               ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<CotisationType>(
+                value: _type,
+                decoration: InputDecoration(labelText: s('cotisations.type'), labelStyle: GoogleFonts.cairo()),
+                items: [
+                  DropdownMenuItem(value: CotisationType.normale, child: Text(s('cotisations.normal'), style: GoogleFonts.cairo())),
+                  DropdownMenuItem(value: CotisationType.dediee, child: Text(s('cotisations.dedicated'), style: GoogleFonts.cairo())),
+                ],
+                onChanged: (v) => setState(() { _type = v!; if (_type == CotisationType.normale) _projetId = null; }),
+                style: GoogleFonts.cairo(color: AppTheme.textPrimary),
+              ),
+              if (_type == CotisationType.dediee) ...[
+                const SizedBox(height: 12),
+                DropdownButtonFormField<String>(
+                  value: _projetId,
+                  decoration: InputDecoration(labelText: s('cotisations.project'), labelStyle: GoogleFonts.cairo()),
+                  items: ponctuelProjects.map((p) => DropdownMenuItem(value: p.id, child: Text(p.nom, style: GoogleFonts.cairo()))).toList(),
+                  onChanged: (v) => setState(() => _projetId = v),
+                  validator: (v) => (v == null || v.isEmpty) ? '⚠' : null,
+                  style: GoogleFonts.cairo(color: AppTheme.textPrimary),
+                ),
+              ],
               const SizedBox(height: 12),
               Row(children: [
                 Expanded(child: TextFormField(
@@ -292,6 +331,7 @@ class _CotisationFormState extends State<_CotisationForm> {
                   DropdownMenuItem(value: CotisationFrequence.mensuelle, child: Text(s('cotisations.freq.monthly'), style: GoogleFonts.cairo())),
                   DropdownMenuItem(value: CotisationFrequence.trimestrielle, child: Text(s('cotisations.freq.quarterly'), style: GoogleFonts.cairo())),
                   DropdownMenuItem(value: CotisationFrequence.annuelle, child: Text(s('cotisations.freq.annual'), style: GoogleFonts.cairo())),
+                  DropdownMenuItem(value: CotisationFrequence.unique, child: Text(s('cotisations.freq.unique'), style: GoogleFonts.cairo())),
                 ],
                 onChanged: (v) => setState(() => _frequence = v!),
                 style: GoogleFonts.cairo(color: AppTheme.textPrimary),
@@ -320,7 +360,8 @@ class _CotisationFormState extends State<_CotisationForm> {
                       statut: CotisationStatus.enAttente,
                       dateDeclaration: DateTime.now().toIso8601String().split('T')[0],
                       dateEcheance: _dateEcheance,
-                      type: CotisationType.normale,
+                      type: _type,
+                      projetId: _type == CotisationType.dediee ? _projetId : null,
                     ));
                     Navigator.pop(context);
                   },

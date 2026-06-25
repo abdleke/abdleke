@@ -1,4 +1,4 @@
-enum ProjectType { standard, periodique }
+enum ProjectType { standard, ponctuel }
 
 enum ProjectStatus { actif, termine, suspendu }
 
@@ -31,10 +31,7 @@ class Project {
         id: json['id'] as String,
         nom: json['nom'] as String,
         description: json['description'] as String,
-        type: ProjectType.values.firstWhere(
-          (e) => e.name == json['type'],
-          orElse: () => ProjectType.standard,
-        ),
+        type: _typeFromString(json['type'] as String? ?? 'standard'),
         budget: (json['budget'] as num).toDouble(),
         dateDebut: json['dateDebut'] as String,
         dateFin: json['dateFin'] as String?,
@@ -62,27 +59,20 @@ class Project {
       };
 
   Project copyWith({
-    String? id,
-    String? nom,
-    String? description,
-    ProjectType? type,
-    double? budget,
-    String? dateDebut,
-    String? dateFin,
-    ProjectStatus? statut,
-    String? responsableId,
-    double? cotisationDediee,
-  }) =>
-      Project(
-        id: id ?? this.id,
-        nom: nom ?? this.nom,
-        description: description ?? this.description,
-        type: type ?? this.type,
-        budget: budget ?? this.budget,
-        dateDebut: dateDebut ?? this.dateDebut,
-        dateFin: dateFin ?? this.dateFin,
-        statut: statut ?? this.statut,
-        responsableId: responsableId ?? this.responsableId,
-        cotisationDediee: cotisationDediee ?? this.cotisationDediee,
-      );
+    String? id, String? nom, String? description, ProjectType? type,
+    double? budget, String? dateDebut, String? dateFin,
+    ProjectStatus? statut, String? responsableId, double? cotisationDediee,
+  }) => Project(
+    id: id ?? this.id, nom: nom ?? this.nom, description: description ?? this.description,
+    type: type ?? this.type, budget: budget ?? this.budget,
+    dateDebut: dateDebut ?? this.dateDebut, dateFin: dateFin ?? this.dateFin,
+    statut: statut ?? this.statut, responsableId: responsableId ?? this.responsableId,
+    cotisationDediee: cotisationDediee ?? this.cotisationDediee,
+  );
+
+  // Backward compat: 'periodique' stored in old data
+  static ProjectType _typeFromString(String s) {
+    if (s == 'ponctuel' || s == 'periodique') return ProjectType.ponctuel;
+    return ProjectType.standard;
+  }
 }

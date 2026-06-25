@@ -1,4 +1,4 @@
-enum CotisationFrequence { mensuelle, trimestrielle, annuelle }
+enum CotisationFrequence { mensuelle, trimestrielle, annuelle, unique }
 
 enum CotisationStatus { enAttente, validee, enRetard }
 
@@ -37,10 +37,7 @@ class Cotisation {
         id: json['id'] as String,
         membreId: json['membreId'] as String,
         montant: (json['montant'] as num).toDouble(),
-        frequence: CotisationFrequence.values.firstWhere(
-          (e) => e.name == json['frequence'],
-          orElse: () => CotisationFrequence.annuelle,
-        ),
+        frequence: _freqFromString(json['frequence'] as String? ?? 'annuelle'),
         annee: json['annee'] as int,
         dateDeclaration: json['dateDeclaration'] as String,
         dateEcheance: json['dateEcheance'] as String,
@@ -70,54 +67,40 @@ class Cotisation {
       };
 
   Cotisation copyWith({
-    String? id,
-    String? membreId,
-    double? montant,
-    CotisationFrequence? frequence,
-    int? annee,
-    String? dateDeclaration,
-    String? dateEcheance,
-    String? datePaiement,
-    CotisationStatus? statut,
-    String? projetId,
-    CotisationType? type,
-    String? commentaire,
-  }) =>
-      Cotisation(
-        id: id ?? this.id,
-        membreId: membreId ?? this.membreId,
-        montant: montant ?? this.montant,
-        frequence: frequence ?? this.frequence,
-        annee: annee ?? this.annee,
-        dateDeclaration: dateDeclaration ?? this.dateDeclaration,
-        dateEcheance: dateEcheance ?? this.dateEcheance,
-        datePaiement: datePaiement ?? this.datePaiement,
-        statut: statut ?? this.statut,
-        projetId: projetId ?? this.projetId,
-        type: type ?? this.type,
-        commentaire: commentaire ?? this.commentaire,
-      );
+    String? id, String? membreId, double? montant, CotisationFrequence? frequence,
+    int? annee, String? dateDeclaration, String? dateEcheance, String? datePaiement,
+    CotisationStatus? statut, String? projetId, CotisationType? type, String? commentaire,
+  }) => Cotisation(
+    id: id ?? this.id, membreId: membreId ?? this.membreId, montant: montant ?? this.montant,
+    frequence: frequence ?? this.frequence, annee: annee ?? this.annee,
+    dateDeclaration: dateDeclaration ?? this.dateDeclaration,
+    dateEcheance: dateEcheance ?? this.dateEcheance, datePaiement: datePaiement ?? this.datePaiement,
+    statut: statut ?? this.statut, projetId: projetId ?? this.projetId,
+    type: type ?? this.type, commentaire: commentaire ?? this.commentaire,
+  );
+
+  static CotisationFrequence _freqFromString(String s) {
+    switch (s) {
+      case 'mensuelle': return CotisationFrequence.mensuelle;
+      case 'trimestrielle': return CotisationFrequence.trimestrielle;
+      case 'unique': return CotisationFrequence.unique;
+      default: return CotisationFrequence.annuelle;
+    }
+  }
 
   static CotisationStatus _statusFromString(String s) {
     switch (s) {
-      case 'validee':
-        return CotisationStatus.validee;
-      case 'en_retard':
-      case 'enRetard':
-        return CotisationStatus.enRetard;
-      default:
-        return CotisationStatus.enAttente;
+      case 'validee': return CotisationStatus.validee;
+      case 'en_retard': case 'enRetard': return CotisationStatus.enRetard;
+      default: return CotisationStatus.enAttente;
     }
   }
 
   static String _statusToString(CotisationStatus s) {
     switch (s) {
-      case CotisationStatus.validee:
-        return 'validee';
-      case CotisationStatus.enRetard:
-        return 'en_retard';
-      case CotisationStatus.enAttente:
-        return 'en_attente';
+      case CotisationStatus.validee: return 'validee';
+      case CotisationStatus.enRetard: return 'en_retard';
+      case CotisationStatus.enAttente: return 'en_attente';
     }
   }
 }

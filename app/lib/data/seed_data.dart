@@ -56,7 +56,7 @@ class SeedData {
         const Project(
           id: 'p2', nom: 'مهرجان الثقافة والتراث',
           description: 'تنظيم مهرجان ثقافي سنوي يحتفي بالتراث المحلي',
-          type: ProjectType.periodique, budget: 80000,
+          type: ProjectType.ponctuel, budget: 80000,
           dateDebut: '2026-04-01', dateFin: '2026-06-30',
           statut: ProjectStatus.actif, responsableId: 'm1',
           cotisationDediee: 500,
