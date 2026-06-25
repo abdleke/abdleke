@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
 import '../models/cotisation.dart';
+import '../models/echeance.dart';
 import '../models/project.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_badge.dart';
@@ -16,7 +17,8 @@ class CotisationsScreen extends StatefulWidget {
   State<CotisationsScreen> createState() => _CotisationsScreenState();
 }
 
-class _CotisationsScreenState extends State<CotisationsScreen> with SingleTickerProviderStateMixin {
+class _CotisationsScreenState extends State<CotisationsScreen>
+    with SingleTickerProviderStateMixin {
   late TabController _tab;
 
   @override
@@ -40,6 +42,7 @@ class _CotisationsScreenState extends State<CotisationsScreen> with SingleTicker
     final visible = prov.visibleCotisations;
     final global = visible.where((c) => c.type == CotisationType.normale).toList();
     final dedicated = visible.where((c) => c.type == CotisationType.dediee).toList();
+    final exercice = prov.activeExercice;
 
     return Scaffold(
       appBar: AppBar(
@@ -61,27 +64,125 @@ class _CotisationsScreenState extends State<CotisationsScreen> with SingleTicker
             IconButton(
               icon: const Icon(Icons.add_rounded),
               tooltip: s('cotisations.add'),
-              onPressed: () => _showForm(context, prov, lang, null),
+              onPressed: () => _showForm(context, lang),
             ),
         ],
       ),
-      body: TabBarView(
-        controller: _tab,
+      body: Column(
         children: [
-          _CotisationList(cotisations: global, prov: prov, lang: lang, canValidate: prov.canValidateCotisation()),
-          _CotisationList(cotisations: dedicated, prov: prov, lang: lang, canValidate: prov.canValidateCotisation(), showProject: true),
+          if (exercice != null)
+            _ExerciceHeader(prov: prov, exerciceId: exercice.id,
+                libelle: exercice.libelle, periode: exercice.periode, lang: lang),
+          Expanded(
+            child: TabBarView(
+              controller: _tab,
+              children: [
+                _CotisationList(
+                  cotisations: global, prov: prov, lang: lang,
+                  canValidate: prov.canValidateCotisation()),
+                _CotisationList(
+                  cotisations: dedicated, prov: prov, lang: lang,
+                  canValidate: prov.canValidateCotisation(), showProject: true),
+              ],
+            ),
+          ),
         ],
       ),
     );
   }
 
-  void _showForm(BuildContext context, AppProvider prov, String lang, Cotisation? existing) {
+  void _showForm(BuildContext context, String lang) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _CotisationForm(existing: existing, lang: lang),
+      builder: (_) => _CotisationForm(lang: lang),
     );
   }
+}
+
+class _ExerciceHeader extends StatelessWidget {
+  final AppProvider prov;
+  final String exerciceId, libelle, periode, lang;
+
+  const _ExerciceHeader({
+    required this.prov,
+    required this.exerciceId,
+    required this.libelle,
+    required this.periode,
+    required this.lang,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = (String k) => AppStrings.get(k, lang);
+    final budget = prov.budgetExercice(exerciceId);
+    final collecte = prov.collecteExercice(exerciceId);
+    final pct = budget > 0 ? (collecte / budget).clamp(0.0, 1.0) : 0.0;
+    final currency = s('common.currency');
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+            colors: [AppTheme.primary, AppTheme.primary.withValues(alpha: 0.8)]),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(libelle,
+                  style: GoogleFonts.cairo(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w700)),
+              Text(periode,
+                  style: GoogleFonts.cairo(color: Colors.white70, fontSize: 10)),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _stat(s('exercice.budget'),
+                  '${budget.toStringAsFixed(0)} $currency'),
+              _stat(s('exercice.collected'),
+                  '${collecte.toStringAsFixed(0)} $currency'),
+              _stat('${(pct * 100).toStringAsFixed(0)}%',
+                  s('cotisations.totalCollected')),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 8,
+              backgroundColor: Colors.white.withValues(alpha: 0.25),
+              valueColor: const AlwaysStoppedAnimation(Colors.white),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(String label, String value) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label,
+              style:
+                  GoogleFonts.cairo(color: Colors.white70, fontSize: 10)),
+          Text(value,
+              style: GoogleFonts.cairo(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700)),
+        ],
+      );
 }
 
 class _CotisationList extends StatelessWidget {
@@ -104,129 +205,346 @@ class _CotisationList extends StatelessWidget {
     final s = (String k) => AppStrings.get(k, lang);
 
     if (cotisations.isEmpty) {
-      return EmptyState(icon: Icons.credit_card_rounded, message: s('cotisations.noCotisations'));
+      return EmptyState(
+          icon: Icons.credit_card_rounded,
+          message: s('cotisations.noCotisations'));
     }
 
-    final total = cotisations.fold(0.0, (sum, c) => sum + c.montant);
+    final total = cotisations.fold(0.0, (sum, c) => sum + c.montantTotal);
 
     return ListView.separated(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
       itemCount: cotisations.length + 1,
       separatorBuilder: (_, __) => const SizedBox(height: 8),
       itemBuilder: (ctx, i) {
         if (i == cotisations.length) {
           return Container(
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: AppTheme.primaryLight, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(
+                color: AppTheme.primaryLight,
+                borderRadius: BorderRadius.circular(12)),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(s('common.total'), style: GoogleFonts.cairo(fontWeight: FontWeight.w700, color: AppTheme.primary)),
-                Text('${total.toStringAsFixed(0)} ${s('common.currency')}', style: GoogleFonts.cairo(fontWeight: FontWeight.w800, color: AppTheme.primary, fontSize: 16)),
+                Text(s('common.total'),
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w700,
+                        color: AppTheme.primary)),
+                Text('${total.toStringAsFixed(0)} ${s('common.currency')}',
+                    style: GoogleFonts.cairo(
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.primary,
+                        fontSize: 16)),
               ],
             ),
           );
         }
-
-        final c = cotisations[i];
-        final memberName = prov.getMemberName(c.membreId);
-
-        BadgeVariant bv;
-        String statusLabel;
-        switch (c.statut) {
-          case CotisationStatus.validee: bv = BadgeVariant.success; statusLabel = s('cotisations.validated'); break;
-          case CotisationStatus.enRetard: bv = BadgeVariant.danger; statusLabel = s('cotisations.overdue'); break;
-          default: bv = BadgeVariant.warning; statusLabel = s('cotisations.pending');
-        }
-
-        String freqLabel;
-        switch (c.frequence) {
-          case CotisationFrequence.mensuelle: freqLabel = s('cotisations.freq.monthly'); break;
-          case CotisationFrequence.trimestrielle: freqLabel = s('cotisations.freq.quarterly'); break;
-          case CotisationFrequence.unique: freqLabel = s('cotisations.freq.unique'); break;
-          default: freqLabel = s('cotisations.freq.annual');
-        }
-
-        return Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.border)),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Expanded(child: Text(memberName, style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w700))),
-                  StatusBadge(label: statusLabel, variant: bv),
-                ],
-              ),
-              if (showProject && c.projetId != null) ...[
-                const SizedBox(height: 4),
-                Row(children: [
-                  Icon(Icons.folder_outlined, size: 12, color: AppTheme.primary),
-                  const SizedBox(width: 4),
-                  Text(prov.getProjectName(c.projetId!), style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600)),
-                ]),
-              ],
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  Icon(Icons.calendar_today_outlined, size: 12, color: AppTheme.textSecondary),
-                  const SizedBox(width: 4),
-                  Text('${s('cotisations.year')}: ${c.annee}', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textSecondary)),
-                  const SizedBox(width: 12),
-                  Icon(Icons.repeat_rounded, size: 12, color: AppTheme.textSecondary),
-                  const SizedBox(width: 4),
-                  Text(freqLabel, style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textSecondary)),
-                  const Spacer(),
-                  Text('${c.montant.toStringAsFixed(0)} ${s('common.currency')}', style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.primary)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Row(
-                children: [
-                  Icon(Icons.event_outlined, size: 12, color: AppTheme.textSecondary),
-                  const SizedBox(width: 4),
-                  Text('${s('cotisations.dueDate')}: ${c.dateEcheance}', style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textSecondary)),
-                  if (c.datePaiement != null) ...[
-                    const SizedBox(width: 12),
-                    Icon(Icons.check_circle_outline_rounded, size: 12, color: AppTheme.success),
-                    const SizedBox(width: 4),
-                    Text('${s('cotisations.paidOn')}: ${c.datePaiement}', style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.success)),
-                  ],
-                ],
-              ),
-              if (canValidate && c.statut == CotisationStatus.enAttente) ...[
-                const SizedBox(height: 10),
-                Row(
-                  children: [
-                    Expanded(child: OutlinedButton.icon(
-                      onPressed: () => context.read<AppProvider>().markCotisationOverdue(c.id),
-                      style: OutlinedButton.styleFrom(foregroundColor: AppTheme.danger, side: BorderSide(color: AppTheme.danger)),
-                      icon: const Icon(Icons.warning_amber_rounded, size: 16),
-                      label: Text(s('cotisations.markOverdue'), style: GoogleFonts.cairo(fontSize: 12)),
-                    )),
-                    const SizedBox(width: 8),
-                    Expanded(child: ElevatedButton.icon(
-                      onPressed: () => context.read<AppProvider>().validateCotisation(c.id),
-                      style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
-                      icon: const Icon(Icons.check_rounded, size: 16),
-                      label: Text(s('cotisations.validate'), style: GoogleFonts.cairo(fontSize: 12)),
-                    )),
-                  ],
-                ),
-              ],
-            ],
-          ),
+        return _CotisationCard(
+          cotisation: cotisations[i],
+          prov: prov,
+          lang: lang,
+          canValidate: canValidate,
+          showProject: showProject,
         );
       },
     );
   }
 }
 
-class _CotisationForm extends StatefulWidget {
-  final Cotisation? existing;
+class _CotisationCard extends StatefulWidget {
+  final Cotisation cotisation;
+  final AppProvider prov;
   final String lang;
-  const _CotisationForm({this.existing, required this.lang});
+  final bool canValidate;
+  final bool showProject;
+
+  const _CotisationCard({
+    required this.cotisation,
+    required this.prov,
+    required this.lang,
+    this.canValidate = false,
+    this.showProject = false,
+  });
+
+  @override
+  State<_CotisationCard> createState() => _CotisationCardState();
+}
+
+class _CotisationCardState extends State<_CotisationCard> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final c = widget.cotisation;
+    final prov = widget.prov;
+    final lang = widget.lang;
+    final s = (String k) => AppStrings.get(k, lang);
+    final memberName = prov.getMemberName(c.membreId);
+    final echeances = prov.echeancesFor(c.id);
+
+    final validatedCount =
+        echeances.where((e) => e.statut == EcheanceStatus.validee).length;
+    final overdueCount =
+        echeances.where((e) => e.statut == EcheanceStatus.enRetard).length;
+
+    BadgeVariant cardBv;
+    String cardStatus;
+    if (echeances.isEmpty) {
+      cardBv = BadgeVariant.warning;
+      cardStatus = s('echeance.pending');
+    } else if (overdueCount > 0) {
+      cardBv = BadgeVariant.danger;
+      cardStatus = s('echeance.overdue');
+    } else if (validatedCount == echeances.length) {
+      cardBv = BadgeVariant.success;
+      cardStatus = s('echeance.validated');
+    } else {
+      cardBv = BadgeVariant.warning;
+      cardStatus = s('echeance.pending');
+    }
+
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        children: [
+          InkWell(
+            onTap: () => setState(() => _expanded = !_expanded),
+            borderRadius: BorderRadius.only(
+              topLeft: const Radius.circular(12),
+              topRight: const Radius.circular(12),
+              bottomLeft: Radius.circular(_expanded ? 0 : 12),
+              bottomRight: Radius.circular(_expanded ? 0 : 12),
+            ),
+            child: Padding(
+              padding: const EdgeInsets.all(14),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                          child: Text(memberName,
+                              style: GoogleFonts.cairo(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700))),
+                      StatusBadge(label: cardStatus, variant: cardBv),
+                      const SizedBox(width: 6),
+                      Icon(
+                        _expanded
+                            ? Icons.expand_less_rounded
+                            : Icons.expand_more_rounded,
+                        color: AppTheme.textSecondary,
+                        size: 20,
+                      ),
+                    ],
+                  ),
+                  if (widget.showProject && c.projetId != null) ...[
+                    const SizedBox(height: 4),
+                    Row(children: [
+                      Icon(Icons.folder_outlined,
+                          size: 12, color: AppTheme.primary),
+                      const SizedBox(width: 4),
+                      Text(prov.getProjectName(c.projetId!),
+                          style: GoogleFonts.cairo(
+                              fontSize: 12,
+                              color: AppTheme.primary,
+                              fontWeight: FontWeight.w600)),
+                    ]),
+                  ],
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.calendar_today_outlined,
+                          size: 12, color: AppTheme.textSecondary),
+                      const SizedBox(width: 4),
+                      Text(c.dateDebut,
+                          style: GoogleFonts.cairo(
+                              fontSize: 12,
+                              color: AppTheme.textSecondary)),
+                      const Spacer(),
+                      Text(
+                          '${c.montantTotal.toStringAsFixed(0)} ${s('common.currency')}',
+                          style: GoogleFonts.cairo(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primary)),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Row(children: [
+                    Icon(Icons.payments_outlined,
+                        size: 12, color: AppTheme.textSecondary),
+                    const SizedBox(width: 4),
+                    Text(
+                        '$validatedCount/${echeances.length} ${s('cotisations.echeances')}',
+                        style: GoogleFonts.cairo(
+                            fontSize: 12,
+                            color: AppTheme.textSecondary)),
+                  ]),
+                ],
+              ),
+            ),
+          ),
+          if (_expanded) ...[
+            const Divider(height: 1),
+            Padding(
+              padding: const EdgeInsets.all(10),
+              child: Column(
+                children: echeances
+                    .map((e) => _EcheanceRow(
+                          echeance: e,
+                          lang: lang,
+                          canValidate: widget.canValidate,
+                          currency: s('common.currency'),
+                        ))
+                    .toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _EcheanceRow extends StatelessWidget {
+  final Echeance echeance;
+  final String lang, currency;
+  final bool canValidate;
+
+  const _EcheanceRow({
+    required this.echeance,
+    required this.lang,
+    required this.currency,
+    this.canValidate = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = (String k) => AppStrings.get(k, lang);
+    final e = echeance;
+
+    BadgeVariant bv;
+    String label;
+    switch (e.statut) {
+      case EcheanceStatus.validee:
+        bv = BadgeVariant.success;
+        label = s('echeance.validated');
+        break;
+      case EcheanceStatus.enRetard:
+        bv = BadgeVariant.danger;
+        label = s('echeance.overdue');
+        break;
+      default:
+        bv = BadgeVariant.warning;
+        label = s('echeance.pending');
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+      decoration: BoxDecoration(
+        color: AppTheme.background,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 24,
+                height: 24,
+                decoration: BoxDecoration(
+                    color: AppTheme.primaryLight,
+                    borderRadius: BorderRadius.circular(6)),
+                child: Center(
+                    child: Text('${e.numero}',
+                        style: GoogleFonts.cairo(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: AppTheme.primary))),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(e.dateEcheance,
+                        style: GoogleFonts.cairo(
+                            fontSize: 12, color: AppTheme.textSecondary)),
+                    if (e.datePaiement != null)
+                      Text(
+                          '${s('echeance.paidOn')}: ${e.datePaiement}',
+                          style: GoogleFonts.cairo(
+                              fontSize: 11, color: AppTheme.success)),
+                  ],
+                ),
+              ),
+              Text('${e.montant.toStringAsFixed(0)} $currency',
+                  style: GoogleFonts.cairo(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primary)),
+              const SizedBox(width: 8),
+              StatusBadge(label: label, variant: bv),
+            ],
+          ),
+          if (canValidate && e.statut != EcheanceStatus.validee) ...[
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                if (e.statut == EcheanceStatus.enAttente)
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () =>
+                          context.read<AppProvider>().markEcheanceOverdue(e.id),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppTheme.danger,
+                        side: BorderSide(color: AppTheme.danger),
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        minimumSize: const Size(0, 32),
+                      ),
+                      icon: const Icon(Icons.warning_amber_rounded, size: 14),
+                      label: Text(s('echeance.markOverdue'),
+                          style: GoogleFonts.cairo(fontSize: 11)),
+                    ),
+                  ),
+                if (e.statut == EcheanceStatus.enAttente)
+                  const SizedBox(width: 8),
+                Expanded(
+                  child: ElevatedButton.icon(
+                    onPressed: () =>
+                        context.read<AppProvider>().validateEcheance(e.id),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppTheme.success,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      minimumSize: const Size(0, 32),
+                    ),
+                    icon: const Icon(Icons.check_rounded, size: 14),
+                    label: Text(s('echeance.validate'),
+                        style: GoogleFonts.cairo(fontSize: 11)),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _CotisationForm extends StatefulWidget {
+  final String lang;
+  const _CotisationForm({required this.lang});
 
   @override
   State<_CotisationForm> createState() => _CotisationFormState();
@@ -234,24 +552,20 @@ class _CotisationForm extends StatefulWidget {
 
 class _CotisationFormState extends State<_CotisationForm> {
   final _key = GlobalKey<FormState>();
-  late String _membreId, _dateEcheance;
-  double _montant = 0;
-  int _annee = DateTime.now().year;
-  CotisationFrequence _frequence = CotisationFrequence.annuelle;
+  String _membreId = '';
+  double _montantTotal = 0;
+  int _nombreEcheances = 1;
+  String _dateDebut = '';
   CotisationType _type = CotisationType.normale;
   String? _projetId;
 
   @override
   void initState() {
     super.initState();
-    final c = widget.existing;
-    _membreId = c?.membreId ?? '';
-    _dateEcheance = c?.dateEcheance ?? DateTime.now().toIso8601String().split('T')[0];
-    _montant = c?.montant ?? 0;
-    _annee = c?.annee ?? DateTime.now().year;
-    _frequence = c?.frequence ?? CotisationFrequence.annuelle;
-    _type = c?.type ?? CotisationType.normale;
-    _projetId = c?.projetId;
+    final prov = context.read<AppProvider>();
+    _dateDebut =
+        prov.activeExercice?.dateDebut ??
+        DateTime.now().toIso8601String().split('T')[0];
   }
 
   @override
@@ -259,11 +573,17 @@ class _CotisationFormState extends State<_CotisationForm> {
     final prov = context.read<AppProvider>();
     final lang = widget.lang;
     final s = (String k) => AppStrings.get(k, lang);
-    final allMembers = prov.members;
-    final ponctuelProjects = prov.projects.where((p) => p.type == ProjectType.ponctuel && p.statut == ProjectStatus.actif).toList();
+    final activeMembers =
+        prov.members.where((m) => m.statut.name == 'actif').toList();
+    final ponctuelProjects = prov.projects
+        .where((p) =>
+            p.type == ProjectType.ponctuel &&
+            p.statut == ProjectStatus.actif)
+        .toList();
 
     return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom),
       child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
         child: Form(
@@ -271,102 +591,165 @@ class _CotisationFormState extends State<_CotisationForm> {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(width: 40, height: 4, margin: const EdgeInsets.only(bottom: 16), decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2))),
-              Text(s('cotisations.add'), style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.w700)),
+              Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  decoration: BoxDecoration(
+                      color: AppTheme.border,
+                      borderRadius: BorderRadius.circular(2))),
+              Text(s('cotisations.add'),
+                  style: GoogleFonts.cairo(
+                      fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
               DropdownButtonFormField<String>(
                 value: _membreId.isNotEmpty ? _membreId : null,
-                decoration: InputDecoration(labelText: s('cotisations.member'), labelStyle: GoogleFonts.cairo()),
-                items: allMembers.map((m) => DropdownMenuItem(value: m.id, child: Text(m.fullName, style: GoogleFonts.cairo()))).toList(),
+                decoration: InputDecoration(
+                    labelText: s('cotisations.member'),
+                    labelStyle: GoogleFonts.cairo()),
+                items: activeMembers
+                    .map((m) => DropdownMenuItem(
+                        value: m.id,
+                        child: Text(m.fullName, style: GoogleFonts.cairo())))
+                    .toList(),
                 onChanged: (v) => setState(() => _membreId = v ?? ''),
-                validator: (v) => (v == null || v.isEmpty) ? '⚠' : null,
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? '⚠' : null,
                 style: GoogleFonts.cairo(color: AppTheme.textPrimary),
               ),
               const SizedBox(height: 12),
               DropdownButtonFormField<CotisationType>(
                 value: _type,
-                decoration: InputDecoration(labelText: s('cotisations.type'), labelStyle: GoogleFonts.cairo()),
+                decoration: InputDecoration(
+                    labelText: s('cotisations.type'),
+                    labelStyle: GoogleFonts.cairo()),
                 items: [
-                  DropdownMenuItem(value: CotisationType.normale, child: Text(s('cotisations.normal'), style: GoogleFonts.cairo())),
-                  DropdownMenuItem(value: CotisationType.dediee, child: Text(s('cotisations.dedicated'), style: GoogleFonts.cairo())),
+                  DropdownMenuItem(
+                      value: CotisationType.normale,
+                      child: Text(s('cotisations.normal'),
+                          style: GoogleFonts.cairo())),
+                  DropdownMenuItem(
+                      value: CotisationType.dediee,
+                      child: Text(s('cotisations.dedicated'),
+                          style: GoogleFonts.cairo())),
                 ],
-                onChanged: (v) => setState(() { _type = v!; if (_type == CotisationType.normale) _projetId = null; }),
+                onChanged: (v) => setState(() {
+                  _type = v!;
+                  if (_type == CotisationType.normale) {
+                    _projetId = null;
+                    _dateDebut = prov.activeExercice?.dateDebut ?? _dateDebut;
+                  }
+                }),
                 style: GoogleFonts.cairo(color: AppTheme.textPrimary),
               ),
               if (_type == CotisationType.dediee) ...[
                 const SizedBox(height: 12),
                 DropdownButtonFormField<String>(
                   value: _projetId,
-                  decoration: InputDecoration(labelText: s('cotisations.project'), labelStyle: GoogleFonts.cairo()),
-                  items: ponctuelProjects.map((p) => DropdownMenuItem(value: p.id, child: Text(p.nom, style: GoogleFonts.cairo()))).toList(),
-                  onChanged: (v) => setState(() => _projetId = v),
-                  validator: (v) => (v == null || v.isEmpty) ? '⚠' : null,
+                  decoration: InputDecoration(
+                      labelText: s('cotisations.project'),
+                      labelStyle: GoogleFonts.cairo()),
+                  items: ponctuelProjects
+                      .map((p) => DropdownMenuItem(
+                          value: p.id,
+                          child: Text(p.nom, style: GoogleFonts.cairo())))
+                      .toList(),
+                  onChanged: (v) {
+                    setState(() {
+                      _projetId = v;
+                      if (v != null) {
+                        final proj = prov.projects
+                            .cast<dynamic>()
+                            .firstWhere((p) => p.id == v,
+                                orElse: () => null);
+                        if (proj != null) _dateDebut = proj.dateDebut as String;
+                      }
+                    });
+                  },
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? '⚠' : null,
                   style: GoogleFonts.cairo(color: AppTheme.textPrimary),
                 ),
               ],
               const SizedBox(height: 12),
               Row(children: [
-                Expanded(child: TextFormField(
-                  initialValue: _montant > 0 ? _montant.toStringAsFixed(0) : '',
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: s('cotisations.amount'), labelStyle: GoogleFonts.cairo()),
-                  style: GoogleFonts.cairo(),
-                  validator: (v) => (double.tryParse(v ?? '') == null) ? '⚠' : null,
-                  onSaved: (v) => _montant = double.tryParse(v ?? '0') ?? 0,
-                )),
+                Expanded(
+                  child: TextFormField(
+                    initialValue: _montantTotal > 0
+                        ? _montantTotal.toStringAsFixed(0)
+                        : '',
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                        labelText: s('cotisations.totalAmount'),
+                        labelStyle: GoogleFonts.cairo()),
+                    style: GoogleFonts.cairo(),
+                    validator: (v) =>
+                        (double.tryParse(v ?? '') == null) ? '⚠' : null,
+                    onSaved: (v) =>
+                        _montantTotal = double.tryParse(v ?? '0') ?? 0,
+                  ),
+                ),
                 const SizedBox(width: 12),
-                Expanded(child: TextFormField(
-                  initialValue: _annee.toString(),
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(labelText: s('cotisations.year'), labelStyle: GoogleFonts.cairo()),
-                  style: GoogleFonts.cairo(),
-                  onSaved: (v) => _annee = int.tryParse(v ?? '') ?? DateTime.now().year,
-                )),
+                Expanded(
+                  child: TextFormField(
+                    initialValue: _nombreEcheances.toString(),
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                        labelText: s('cotisations.installments'),
+                        labelStyle: GoogleFonts.cairo()),
+                    style: GoogleFonts.cairo(),
+                    validator: (v) {
+                      final n = int.tryParse(v ?? '');
+                      return (n == null || n < 1 || n > 12) ? '1-12' : null;
+                    },
+                    onSaved: (v) =>
+                        _nombreEcheances = int.tryParse(v ?? '1') ?? 1,
+                  ),
+                ),
               ]),
               const SizedBox(height: 12),
-              DropdownButtonFormField<CotisationFrequence>(
-                value: _frequence,
-                decoration: InputDecoration(labelText: s('cotisations.frequency'), labelStyle: GoogleFonts.cairo()),
-                items: [
-                  DropdownMenuItem(value: CotisationFrequence.mensuelle, child: Text(s('cotisations.freq.monthly'), style: GoogleFonts.cairo())),
-                  DropdownMenuItem(value: CotisationFrequence.trimestrielle, child: Text(s('cotisations.freq.quarterly'), style: GoogleFonts.cairo())),
-                  DropdownMenuItem(value: CotisationFrequence.annuelle, child: Text(s('cotisations.freq.annual'), style: GoogleFonts.cairo())),
-                  DropdownMenuItem(value: CotisationFrequence.unique, child: Text(s('cotisations.freq.unique'), style: GoogleFonts.cairo())),
-                ],
-                onChanged: (v) => setState(() => _frequence = v!),
-                style: GoogleFonts.cairo(color: AppTheme.textPrimary),
-              ),
-              const SizedBox(height: 12),
               TextFormField(
-                initialValue: _dateEcheance,
-                decoration: InputDecoration(labelText: s('cotisations.dueDate'), labelStyle: GoogleFonts.cairo()),
+                initialValue: _dateDebut,
+                decoration: InputDecoration(
+                    labelText: s('cotisations.startDate'),
+                    labelStyle: GoogleFonts.cairo()),
                 style: GoogleFonts.cairo(),
-                onSaved: (v) => _dateEcheance = v ?? '',
+                validator: (v) =>
+                    (v == null || v.isEmpty) ? '⚠' : null,
+                onSaved: (v) => _dateDebut = v ?? '',
               ),
               const SizedBox(height: 20),
               Row(children: [
-                Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: Text(s('common.cancel'), style: GoogleFonts.cairo()))),
+                Expanded(
+                    child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(s('common.cancel'),
+                            style: GoogleFonts.cairo()))),
                 const SizedBox(width: 12),
-                Expanded(child: ElevatedButton(
-                  onPressed: () {
-                    if (_key.currentState?.validate() != true) return;
-                    _key.currentState?.save();
-                    prov.addCotisation(Cotisation(
-                      id: widget.existing?.id ?? prov.newId(),
-                      membreId: _membreId,
-                      montant: _montant,
-                      annee: _annee,
-                      frequence: _frequence,
-                      statut: CotisationStatus.enAttente,
-                      dateDeclaration: DateTime.now().toIso8601String().split('T')[0],
-                      dateEcheance: _dateEcheance,
-                      type: _type,
-                      projetId: _type == CotisationType.dediee ? _projetId : null,
-                    ));
-                    Navigator.pop(context);
-                  },
-                  child: Text(s('common.save'), style: GoogleFonts.cairo()),
-                )),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (_key.currentState?.validate() != true) return;
+                      _key.currentState?.save();
+                      final exercice = prov.activeExercice;
+                      prov.addCotisation(Cotisation(
+                        id: prov.newId(),
+                        membreId: _membreId,
+                        exerciceId: exercice?.id ?? '',
+                        annee: exercice?.annee ?? DateTime.now().year,
+                        montantTotal: _montantTotal,
+                        nombreEcheances: _nombreEcheances,
+                        dateDebut: _dateDebut,
+                        type: _type,
+                        projetId:
+                            _type == CotisationType.dediee ? _projetId : null,
+                      ));
+                      Navigator.pop(context);
+                    },
+                    child: Text(s('common.save'),
+                        style: GoogleFonts.cairo()),
+                  ),
+                ),
               ]),
               const SizedBox(height: 8),
             ],

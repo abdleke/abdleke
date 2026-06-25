@@ -5,6 +5,7 @@ import 'package:url_launcher/url_launcher.dart';
 import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
 import '../models/cotisation.dart';
+import '../models/echeance.dart';
 import '../theme/app_theme.dart';
 import '../widgets/member_avatar.dart';
 import '../widgets/empty_state.dart';
@@ -20,26 +21,30 @@ class RemindersScreen extends StatelessWidget {
 
     final now = DateTime.now();
 
-    final overdueItems = prov.cotisations
-        .where((c) => c.statut == CotisationStatus.enRetard)
-        .map((c) {
-          final member = prov.members.cast<dynamic>().firstWhere((m) => m.id == c.membreId, orElse: () => null);
-          final daysLate = now.difference(DateTime.tryParse(c.dateEcheance) ?? now).inDays;
-          return (c, member, daysLate);
-        })
-        .where((t) => t.$2 != null)
-        .toList()
+    Cotisation? _cotForEcheance(Echeance e) =>
+        prov.cotisations.cast<Cotisation?>().firstWhere(
+            (c) => c?.id == e.cotisationId, orElse: () => null);
+
+    final overdueItems = prov.overdueEcheances.map((e) {
+      final cot = _cotForEcheance(e);
+      final member = cot != null
+          ? prov.members.cast<dynamic>().firstWhere(
+              (m) => m.id == cot.membreId, orElse: () => null)
+          : null;
+      final daysLate = now.difference(DateTime.tryParse(e.dateEcheance) ?? now).inDays.abs();
+      return (e, member, daysLate);
+    }).where((t) => t.$2 != null).toList()
       ..sort((a, b) => b.$3.compareTo(a.$3));
 
-    final upcomingItems = prov.cotisations
-        .where((c) => c.statut == CotisationStatus.enAttente)
-        .map((c) {
-          final member = prov.members.cast<dynamic>().firstWhere((m) => m.id == c.membreId, orElse: () => null);
-          final daysLeft = (DateTime.tryParse(c.dateEcheance) ?? now).difference(now).inDays;
-          return (c, member, daysLeft);
-        })
-        .where((t) => t.$2 != null && t.$3 >= 0 && t.$3 <= 30)
-        .toList()
+    final upcomingItems = prov.upcomingEcheances().map((e) {
+      final cot = _cotForEcheance(e);
+      final member = cot != null
+          ? prov.members.cast<dynamic>().firstWhere(
+              (m) => m.id == cot.membreId, orElse: () => null)
+          : null;
+      final daysLeft = (DateTime.tryParse(e.dateEcheance) ?? now).difference(now).inDays;
+      return (e, member, daysLeft);
+    }).where((t) => t.$2 != null).toList()
       ..sort((a, b) => a.$3.compareTo(b.$3));
 
     return Scaffold(
@@ -84,7 +89,7 @@ class RemindersScreen extends StatelessWidget {
           else
             ...overdueItems.map((t) => _ReminderCard(
               member: t.$2,
-              cotisation: t.$1,
+              amount: t.$1.montant,
               lang: lang,
               days: t.$3,
               isOverdue: true,
@@ -101,7 +106,7 @@ class RemindersScreen extends StatelessWidget {
           else
             ...upcomingItems.map((t) => _ReminderCard(
               member: t.$2,
-              cotisation: t.$1,
+              amount: t.$1.montant,
               lang: lang,
               days: t.$3,
               isOverdue: false,
@@ -134,14 +139,14 @@ class RemindersScreen extends StatelessWidget {
 
 class _ReminderCard extends StatelessWidget {
   final dynamic member;
-  final dynamic cotisation;
+  final double amount;
   final String lang, currency;
   final int days;
   final bool isOverdue;
 
   const _ReminderCard({
     required this.member,
-    required this.cotisation,
+    required this.amount,
     required this.lang,
     required this.days,
     required this.isOverdue,
@@ -183,7 +188,7 @@ class _ReminderCard extends StatelessWidget {
                           child: Text('$days $daysLabel', style: GoogleFonts.cairo(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
                         ),
                         const SizedBox(width: 8),
-                        Text('${(cotisation.montant as double).toStringAsFixed(0)} $currency', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
+                        Text('${amount.toStringAsFixed(0)} $currency', style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700, color: color)),
                       ],
                     ),
                   ],
@@ -197,7 +202,7 @@ class _ReminderCard extends StatelessWidget {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: () => _sendWhatsApp(context, member.telephone as String, member.fullName as String, cotisation.montant as double, lang, s),
+                    onPressed: () => _sendWhatsApp(context, member.telephone as String, member.fullName as String, amount, lang, s),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: const Color(0xFF25D366),
                       side: const BorderSide(color: Color(0xFF25D366)),

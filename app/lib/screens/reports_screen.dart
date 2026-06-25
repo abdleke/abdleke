@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
 import '../models/cotisation.dart';
 import '../models/depense.dart';
+import '../models/echeance.dart';
 import '../theme/app_theme.dart';
 import '../widgets/budget_bar.dart';
 
@@ -16,15 +17,13 @@ class ReportsScreen extends StatelessWidget {
     final prov = context.watch<AppProvider>();
     final lang = prov.language;
     final s = (String k) => AppStrings.get(k, lang);
-    final currentYear = DateTime.now().year;
 
     // Financial summary
-    final totalCollected = prov.cotisations
-        .where((c) => c.statut == CotisationStatus.validee && c.annee == currentYear)
-        .fold(0.0, (sum, c) => sum + c.montant);
-    final totalPendingCotisations = prov.cotisations
-        .where((c) => c.statut == CotisationStatus.enAttente)
-        .fold(0.0, (sum, c) => sum + c.montant);
+    final totalCollected =
+        prov.collecteExercice(prov.activeExercice?.id ?? '');
+    final totalPendingCotisations = prov.echeances
+        .where((e) => e.statut == EcheanceStatus.enAttente)
+        .fold(0.0, (sum, e) => sum + e.montant);
     final totalExpenses = prov.depenses
         .where((d) => d.statut == DepenseStatus.approuvee)
         .fold(0.0, (sum, d) => sum + d.montant);
@@ -47,8 +46,18 @@ class ReportsScreen extends StatelessWidget {
 
     // Member cotisation compliance
     final memberCompliance = prov.members.map((m) {
-      final paid = prov.cotisations.where((c) => c.membreId == m.id && c.statut == CotisationStatus.validee && c.annee == currentYear).fold(0.0, (sum, c) => sum + c.montant);
-      final overdue = prov.cotisations.where((c) => c.membreId == m.id && c.statut == CotisationStatus.enRetard).length;
+      final memberCotisationIds = prov.cotisations
+          .where((c) => c.membreId == m.id)
+          .map((c) => c.id)
+          .toSet();
+      final paid = prov.echeances
+          .where((e) => memberCotisationIds.contains(e.cotisationId) &&
+              e.statut == EcheanceStatus.validee)
+          .fold(0.0, (sum, e) => sum + e.montant);
+      final overdue = prov.echeances
+          .where((e) => memberCotisationIds.contains(e.cotisationId) &&
+              e.statut == EcheanceStatus.enRetard)
+          .length;
       return (m, paid, overdue);
     }).toList()
       ..sort((a, b) => b.$2.compareTo(a.$2));

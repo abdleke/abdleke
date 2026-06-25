@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
 import '../models/cotisation.dart';
 import '../models/depense.dart';
+import '../models/echeance.dart';
 import '../theme/app_theme.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/member_avatar.dart';
@@ -25,27 +26,33 @@ class DashboardScreen extends StatelessWidget {
 
     final activeMembers = prov.members.where((m) => m.statut.name == 'actif').toList();
     final activeProjects = prov.projects.where((p) => p.statut.name == 'actif').toList();
-    final pending = prov.depenses.where((d) => d.statut == DepenseStatus.soumise).length +
-        prov.cotisations.where((c) => c.statut == CotisationStatus.enAttente).length;
-    final currentYear = DateTime.now().year;
-    final collected = prov.cotisations
-        .where((c) => c.statut == CotisationStatus.validee && c.annee == currentYear)
-        .fold(0.0, (sum, c) => sum + c.montant);
+    final pendingExpenseCount = prov.depenses.where((d) => d.statut == DepenseStatus.soumise).length;
+    final overdueEcheances = prov.overdueEcheances;
+    final pending = pendingExpenseCount + overdueEcheances.length;
+    final collected = prov.collecteExercice(prov.activeExercice?.id ?? '');
 
-    final overdue = prov.cotisations
-        .where((c) => c.statut == CotisationStatus.enRetard)
-        .map((c) => (c, prov.members.cast<dynamic>().firstWhere((m) => m.id == c.membreId, orElse: () => null)))
-        .where((pair) => pair.$2 != null)
-        .toList();
+    Cotisation? _cotForEcheance(Echeance e) =>
+        prov.cotisations.cast<Cotisation?>().firstWhere(
+            (c) => c?.id == e.cotisationId, orElse: () => null);
 
-    final upcoming = prov.cotisations
-        .where((c) => c.statut != CotisationStatus.validee)
-        .map((c) {
-          final days = _daysDiff(c.dateEcheance);
-          return (c, days, prov.members.cast<dynamic>().firstWhere((m) => m.id == c.membreId, orElse: () => null));
-        })
-        .where((t) => t.$2 >= 0 && t.$2 <= 30 && t.$3 != null)
-        .toList()
+    final overdue = overdueEcheances.map((e) {
+      final cot = _cotForEcheance(e);
+      final member = cot != null
+          ? prov.members.cast<dynamic>().firstWhere(
+              (m) => m.id == cot.membreId, orElse: () => null)
+          : null;
+      return (e, member);
+    }).where((pair) => pair.$2 != null).toList();
+
+    final upcoming = prov.upcomingEcheances().map((e) {
+      final cot = _cotForEcheance(e);
+      final member = cot != null
+          ? prov.members.cast<dynamic>().firstWhere(
+              (m) => m.id == cot.membreId, orElse: () => null)
+          : null;
+      final days = _daysDiff(e.dateEcheance);
+      return (e, days, member);
+    }).where((t) => t.$3 != null).toList()
       ..sort((a, b) => a.$2.compareTo(b.$2));
 
     final pendingExpenses = prov.depenses.where((d) => d.statut == DepenseStatus.soumise).take(4).toList();
@@ -131,14 +138,14 @@ class DashboardScreen extends StatelessWidget {
                 ? _emptyRow(s('dashboard.noOverdue'))
                 : Column(
                     children: overdue.take(4).map((pair) {
-                      final cot = pair.$1;
+                      final e = pair.$1;
                       final member = pair.$2;
-                      final daysLate = _daysDiff(cot.dateEcheance).abs();
+                      final daysLate = _daysDiff(e.dateEcheance).abs();
                       return _OverdueRow(
-                        initials: member.initials,
-                        name: member.fullName,
+                        initials: member.initials as String,
+                        name: member.fullName as String,
                         daysLate: daysLate,
-                        amount: cot.montant,
+                        amount: e.montant,
                         currency: s('common.currency'),
                         daysLabel: s('reminders.daysOverdue'),
                         bgColor: const Color(0xFFFFF1F2),
@@ -162,8 +169,8 @@ class DashboardScreen extends StatelessWidget {
                     children: upcoming.take(4).map((t) {
                       final member = t.$3;
                       return _OverdueRow(
-                        initials: member.initials,
-                        name: member.fullName,
+                        initials: member.initials as String,
+                        name: member.fullName as String,
                         daysLate: t.$2,
                         amount: t.$1.montant,
                         currency: s('common.currency'),
