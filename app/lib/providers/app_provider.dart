@@ -261,6 +261,17 @@ class AppProvider extends ChangeNotifier {
     return List.unmodifiable(_members.where((m) => m.id == user.id));
   }
 
+  List<Depense> get visibleDepenses {
+    final user = currentUser;
+    if (user == null) return [];
+    if (user.role == MemberRole.admin || user.role == MemberRole.tresorier) return List.unmodifiable(_depenses);
+    if (user.role == MemberRole.chefProjet) {
+      final myProjectIds = _projects.where((p) => p.responsableId == user.id).map((p) => p.id).toSet();
+      return List.unmodifiable(_depenses.where((d) => myProjectIds.contains(d.projetId) || d.membreId == user.id));
+    }
+    return List.unmodifiable(_depenses.where((d) => d.membreId == user.id));
+  }
+
   // ── Exercice helpers ───────────────────────────────────────────
 
   double budgetExercice(String exerciceId) =>

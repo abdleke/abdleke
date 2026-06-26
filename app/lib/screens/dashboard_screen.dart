@@ -26,7 +26,7 @@ class DashboardScreen extends StatelessWidget {
 
     final activeMembers = prov.members.where((m) => m.statut.name == 'actif').toList();
     final activeProjects = prov.projects.where((p) => p.statut.name == 'actif').toList();
-    final pendingExpenseCount = prov.depenses.where((d) => d.statut == DepenseStatus.soumise).length;
+    final pendingExpenseCount = prov.visibleDepenses.where((d) => d.statut == DepenseStatus.soumise).length;
     final overdueEcheances = prov.overdueEcheances;
     final pending = pendingExpenseCount + overdueEcheances.length;
     final exerciceId = prov.activeExercice?.id ?? '';
@@ -57,7 +57,7 @@ class DashboardScreen extends StatelessWidget {
     }).where((t) => t.$3 != null).toList()
       ..sort((a, b) => a.$2.compareTo(b.$2));
 
-    final pendingExpenses = prov.depenses.where((d) => d.statut == DepenseStatus.soumise).take(4).toList();
+    final pendingExpenses = prov.visibleDepenses.where((d) => d.statut == DepenseStatus.soumise).take(4).toList();
     final user = prov.currentUser;
 
     return Scaffold(

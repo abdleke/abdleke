@@ -43,7 +43,7 @@ class ProjectsScreen extends StatelessWidget {
                 final spent = prov.getProjectSpent(p.id);
                 final manager = prov.members.cast<dynamic>().firstWhere(
                   (m) => m.id == p.responsableId, orElse: () => null);
-                final pendingCount = prov.depenses.where((d) => d.projetId == p.id && d.statut.name == 'soumise').length;
+                final pendingCount = prov.visibleDepenses.where((d) => d.projetId == p.id && d.statut.name == 'soumise').length;
 
                 return _ProjectCard(
                   project: p,

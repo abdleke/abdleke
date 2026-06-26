@@ -24,16 +24,16 @@ class ReportsScreen extends StatelessWidget {
     final totalPendingCotisations = prov.echeances
         .where((e) => e.statut == EcheanceStatus.enAttente)
         .fold(0.0, (sum, e) => sum + e.montant);
-    final totalExpenses = prov.depenses
+    final totalExpenses = prov.visibleDepenses
         .where((d) => d.statut == DepenseStatus.approuvee)
         .fold(0.0, (sum, d) => sum + d.montant);
-    final pendingExpenses = prov.depenses
+    final pendingExpenses = prov.visibleDepenses
         .where((d) => d.statut == DepenseStatus.soumise)
         .fold(0.0, (sum, d) => sum + d.montant);
 
     // Expenses by category
     final expensesByCategory = <DepenseCategorie, double>{};
-    for (final d in prov.depenses.where((d) => d.statut == DepenseStatus.approuvee)) {
+    for (final d in prov.visibleDepenses.where((d) => d.statut == DepenseStatus.approuvee)) {
       expensesByCategory[d.categorie] = (expensesByCategory[d.categorie] ?? 0) + d.montant;
     }
 

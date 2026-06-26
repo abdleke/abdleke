@@ -29,7 +29,7 @@ class ProjectDetailScreen extends StatelessWidget {
     }
 
     final spent = prov.getProjectSpent(projectId);
-    final depenses = prov.depenses.where((d) => d.projetId == projectId).toList();
+    final depenses = prov.visibleDepenses.where((d) => d.projetId == projectId).toList();
     final manager = prov.members.cast<dynamic>().firstWhere((m) => m.id == project.responsableId, orElse: () => null);
 
     return DefaultTabController(
