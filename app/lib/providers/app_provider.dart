@@ -261,7 +261,7 @@ class AppProvider extends ChangeNotifier {
   // ── Exercice helpers ───────────────────────────────────────────
 
   double budgetExercice(String exerciceId) =>
-      _cotisations.where((c) => c.exerciceId == exerciceId)
+      _cotisations.where((c) => c.exerciceId == exerciceId && c.type == CotisationType.normale)
           .fold(0.0, (sum, c) => sum + c.montantTotal);
 
   double collecteExercice(String exerciceId) {

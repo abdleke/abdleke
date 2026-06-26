@@ -29,7 +29,9 @@ class DashboardScreen extends StatelessWidget {
     final pendingExpenseCount = prov.depenses.where((d) => d.statut == DepenseStatus.soumise).length;
     final overdueEcheances = prov.overdueEcheances;
     final pending = pendingExpenseCount + overdueEcheances.length;
-    final collected = prov.collecteExercice(prov.activeExercice?.id ?? '');
+    final exerciceId = prov.activeExercice?.id ?? '';
+    final budget = prov.budgetExercice(exerciceId);
+    final collected = prov.collecteExercice(exerciceId);
 
     Cotisation? _cotForEcheance(Echeance e) =>
         prov.cotisations.cast<Cotisation?>().firstWhere(
@@ -124,6 +126,14 @@ class DashboardScreen extends StatelessWidget {
                 lightColor: AppTheme.successLight,
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          if (budget > 0) _BudgetProgressCard(
+            budget: budget,
+            collected: collected,
+            currency: s('common.currency'),
+            labelEngagements: s('dashboard.totalEngagements'),
+            labelProgress: s('dashboard.budgetProgress'),
           ),
           const SizedBox(height: 20),
 
@@ -332,6 +342,97 @@ class _OverdueRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _BudgetProgressCard extends StatelessWidget {
+  final double budget, collected;
+  final String currency, labelEngagements, labelProgress;
+
+  const _BudgetProgressCard({
+    required this.budget,
+    required this.collected,
+    required this.currency,
+    required this.labelEngagements,
+    required this.labelProgress,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final pct = budget > 0 ? (collected / budget).clamp(0.0, 1.0) : 0.0;
+    final isComplete = pct >= 1.0;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppTheme.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.savings_rounded, size: 18, color: AppTheme.primary),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(labelProgress,
+                    style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w700)),
+              ),
+              Text(
+                '${(pct * 100).toStringAsFixed(0)}%',
+                style: GoogleFonts.cairo(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w800,
+                    color: isComplete ? AppTheme.success : AppTheme.primary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: pct,
+              minHeight: 8,
+              backgroundColor: AppTheme.primaryLight,
+              valueColor: AlwaysStoppedAnimation(
+                  isComplete ? AppTheme.success : AppTheme.primary),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _amt(labelEngagements, budget, currency, AppTheme.textSecondary),
+              _amt('✓ ${_fmt(collected)} $currency', collected, currency, AppTheme.success,
+                  showLabel: false),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _amt(String label, double value, String currency, Color color,
+      {bool showLabel = true}) {
+    if (!showLabel) {
+      return Text('✓ ${_fmt(value)} $currency',
+          style: GoogleFonts.cairo(
+              fontSize: 13, fontWeight: FontWeight.w700, color: color));
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label,
+            style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textSecondary)),
+        Text('${_fmt(value)} $currency',
+            style: GoogleFonts.cairo(
+                fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.textPrimary)),
+      ],
+    );
+  }
+
+  String _fmt(double v) => v.toStringAsFixed(0).replaceAllMapped(
+      RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 }
 
 class _LangButton extends StatelessWidget {
