@@ -124,6 +124,8 @@ class _LanguageSection extends StatelessWidget {
   final String lang;
   const _LanguageSection({required this.prov, required this.lang});
 
+  static const _currencies = ['MAD', 'DA', 'TND', 'EUR', 'USD'];
+
   @override
   Widget build(BuildContext context) {
     final s = (String k) => AppStrings.get(k, lang);
@@ -145,6 +147,25 @@ class _LanguageSection extends StatelessWidget {
               style: ButtonStyle(
                 textStyle: WidgetStatePropertyAll(GoogleFonts.cairo(fontSize: 12)),
               ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Icon(Icons.payments_rounded, size: 18, color: AppTheme.primary),
+            const SizedBox(width: 10),
+            Expanded(child: Text(s('common.currency'), style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w600))),
+            DropdownButton<String>(
+              value: prov.currency,
+              underline: const SizedBox(),
+              isDense: true,
+              style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primary),
+              items: _currencies.map((c) => DropdownMenuItem(
+                value: c,
+                child: Text(c, style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700)),
+              )).toList(),
+              onChanged: (c) { if (c != null) prov.setCurrency(c); },
             ),
           ],
         ),

@@ -118,7 +118,7 @@ class _ExerciceHeader extends StatelessWidget {
     final budget = prov.budgetExercice(exerciceId);
     final collecte = prov.collecteExercice(exerciceId);
     final pct = budget > 0 ? (collecte / budget).clamp(0.0, 1.0) : 0.0;
-    final currency = s('common.currency');
+    final currency = prov.currency;
 
     return Container(
       margin: const EdgeInsets.all(16),
@@ -230,7 +230,7 @@ class _CotisationList extends StatelessWidget {
                     style: GoogleFonts.cairo(
                         fontWeight: FontWeight.w700,
                         color: AppTheme.primary)),
-                Text('${total.toStringAsFixed(0)} ${s('common.currency')}',
+                Text('${total.toStringAsFixed(0)} ${prov.currency}',
                     style: GoogleFonts.cairo(
                         fontWeight: FontWeight.w800,
                         color: AppTheme.primary,
@@ -367,7 +367,7 @@ class _CotisationCardState extends State<_CotisationCard> {
                               color: AppTheme.textSecondary)),
                       const Spacer(),
                       Text(
-                          '${c.montantTotal.toStringAsFixed(0)} ${s('common.currency')}',
+                          '${c.montantTotal.toStringAsFixed(0)} ${prov.currency}',
                           style: GoogleFonts.cairo(
                               fontSize: 15,
                               fontWeight: FontWeight.w700,
@@ -399,7 +399,7 @@ class _CotisationCardState extends State<_CotisationCard> {
                           echeance: e,
                           lang: lang,
                           canValidate: widget.canValidate,
-                          currency: s('common.currency'),
+                          currency: prov.currency,
                         ))
                     .toList(),
               ),

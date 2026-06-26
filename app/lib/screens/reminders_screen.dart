@@ -93,7 +93,7 @@ class RemindersScreen extends StatelessWidget {
               lang: lang,
               days: t.$3,
               isOverdue: true,
-              currency: s('common.currency'),
+              currency: prov.currency,
             )),
 
           const SizedBox(height: 20),
@@ -110,7 +110,7 @@ class RemindersScreen extends StatelessWidget {
               lang: lang,
               days: t.$3,
               isOverdue: false,
-              currency: s('common.currency'),
+              currency: prov.currency,
             )),
 
           const SizedBox(height: 24),

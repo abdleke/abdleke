@@ -50,7 +50,7 @@ class ProjectsScreen extends StatelessWidget {
                   spent: spent,
                   managerName: manager?.fullName ?? '—',
                   pendingCount: pendingCount,
-                  currency: s('common.currency'),
+                  currency: prov.currency,
                   lang: lang,
                   onTap: () => Navigator.push(ctx, MaterialPageRoute(builder: (_) => ProjectDetailScreen(projectId: p.id))),
                   onEdit: prov.canManageProjects() ? () => _showForm(ctx, prov, lang, p) : null,

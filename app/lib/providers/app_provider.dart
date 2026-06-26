@@ -24,6 +24,7 @@ class AppProvider extends ChangeNotifier {
   List<Echeance> _echeances = [];
   String _currentUserId = '';
   String _language = 'ar';
+  String _currency = 'MAD';
   bool _isLoggedIn = false;
   bool _supabaseAvailable = false;
 
@@ -42,6 +43,7 @@ class AppProvider extends ChangeNotifier {
   List<Echeance> get echeances => List.unmodifiable(_echeances);
   String get currentUserId => _currentUserId;
   String get language => _language;
+  String get currency => _currency;
   bool get isLoggedIn => _isLoggedIn;
   bool get isOnlineMode => _supabaseAvailable;
 
@@ -59,6 +61,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _language = prefs.getString('jamiyati_lang') ?? 'ar';
+    _currency = prefs.getString('jamiyati_currency') ?? 'MAD';
 
     _supabaseAvailable = supabaseConfigured;
     if (_supabaseAvailable) {
@@ -313,11 +316,17 @@ class AppProvider extends ChangeNotifier {
     return c?.montantTotal ?? 0;
   }
 
-  // ── Language ───────────────────────────────────────────────────
+  // ── Language & Currency ────────────────────────────────────────
 
   void setLanguage(String lang) {
     _language = lang;
     SharedPreferences.getInstance().then((p) => p.setString('jamiyati_lang', lang));
+    notifyListeners();
+  }
+
+  void setCurrency(String c) {
+    _currency = c;
+    SharedPreferences.getInstance().then((p) => p.setString('jamiyati_currency', c));
     notifyListeners();
   }
 

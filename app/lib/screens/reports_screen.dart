@@ -76,7 +76,7 @@ class ReportsScreen extends StatelessWidget {
             totalExpenses: totalExpenses,
             pendingExpenses: pendingExpenses,
             balance: totalCollected - totalExpenses,
-            currency: s('common.currency'),
+            currency: prov.currency,
             lang: lang,
           ),
           const SizedBox(height: 20),
@@ -85,7 +85,7 @@ class ReportsScreen extends StatelessWidget {
           if (expensesByCategory.isNotEmpty) ...[
             _Section(title: s('reports.expensesByCategory'), icon: Icons.pie_chart_rounded, color: AppTheme.info),
             const SizedBox(height: 8),
-            _CategoryBreakdown(categories: expensesByCategory, total: totalExpenses, currency: s('common.currency'), lang: lang),
+            _CategoryBreakdown(categories: expensesByCategory, total: totalExpenses, currency: prov.currency, lang: lang),
             const SizedBox(height: 20),
           ],
 
@@ -103,7 +103,7 @@ class ReportsScreen extends StatelessWidget {
                   children: [
                     Text(t.$1.nom, style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
-                    BudgetBar(spent: t.$2, budget: t.$1.budget, currency: s('common.currency')),
+                    BudgetBar(spent: t.$2, budget: t.$1.budget, currency: prov.currency),
                   ],
                 ),
               ),
@@ -130,7 +130,7 @@ class ReportsScreen extends StatelessWidget {
                       child: Text('${t.$3} ${s('reports.overdueCount')}', style: GoogleFonts.cairo(fontSize: 10, color: AppTheme.danger, fontWeight: FontWeight.w600)),
                     ),
                   Text(
-                    '${t.$2.toStringAsFixed(0)} ${s('common.currency')}',
+                    '${t.$2.toStringAsFixed(0)} ${prov.currency}',
                     style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700, color: t.$2 > 0 ? AppTheme.success : AppTheme.textSecondary),
                   ),
                 ],

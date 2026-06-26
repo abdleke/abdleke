@@ -68,7 +68,7 @@ class ProjectDetailScreen extends StatelessWidget {
                     project: project,
                     spent: spent,
                     manager: manager,
-                    currency: s('common.currency'),
+                    currency: prov.currency,
                     lang: lang,
                   ),
                 ],
@@ -171,7 +171,7 @@ class _ExpensesList extends StatelessWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(s('common.total'), style: GoogleFonts.cairo(fontWeight: FontWeight.w700, color: AppTheme.primary)),
-                Text('${total.toStringAsFixed(0)} ${s('common.currency')}', style: GoogleFonts.cairo(fontWeight: FontWeight.w800, color: AppTheme.primary, fontSize: 16)),
+                Text('${total.toStringAsFixed(0)} ${prov.currency}', style: GoogleFonts.cairo(fontWeight: FontWeight.w800, color: AppTheme.primary, fontSize: 16)),
               ],
             ),
           );
@@ -210,7 +210,7 @@ class _ExpensesList extends StatelessWidget {
                   const SizedBox(width: 4),
                   Text(s('expenses.cat.${d.categorie.name}'), style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textSecondary)),
                   const Spacer(),
-                  Text('${d.montant.toStringAsFixed(0)} ${s('common.currency')}', style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+                  Text('${d.montant.toStringAsFixed(0)} ${prov.currency}', style: GoogleFonts.cairo(fontSize: 15, fontWeight: FontWeight.w700, color: AppTheme.primary)),
                 ],
               ),
               if (d.commentaire != null && d.commentaire!.isNotEmpty) ...[
