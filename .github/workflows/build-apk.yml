@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK & iOS IPA
 
 on:
   push:
@@ -8,7 +8,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  build:
+  android:
+    name: Android APK
     runs-on: ubuntu-latest
 
     steps:
@@ -45,4 +46,46 @@ jobs:
         with:
           name: jamiyati-apk
           path: app/build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
+
+  ios:
+    name: iOS IPA
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: stable
+          cache: true
+
+      - name: Add iOS platform
+        working-directory: app
+        run: flutter create --platforms ios .
+
+      - name: Get dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Build iOS (no codesign)
+        working-directory: app
+        run: flutter build ios --release --no-codesign
+
+      - name: Package IPA
+        working-directory: app
+        run: |
+          mkdir -p build/ios/ipa/Payload
+          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
+          cd build/ios/ipa
+          zip -r ../jamiyati.ipa Payload
+
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: jamiyati-ipa
+          path: app/build/ios/jamiyati.ipa
           retention-days: 30
