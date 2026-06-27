@@ -71,9 +71,21 @@ jobs:
 
       - name: Patch device_info_plus (isiOSAppOnVision compile fix)
         run: |
-          find $HOME/.pub-cache -name "FPPDeviceInfoPlusPlugin.m" | while read f; do
-            sed -i '' 's/\[processInfo isiOSAppOnVision\]/NO/g' "$f"
-          done
+          python3 - <<'EOF'
+          import os, glob
+          pattern = os.path.expanduser('~/.pub-cache/**/FPPDeviceInfoPlusPlugin.m')
+          files = glob.glob(pattern, recursive=True)
+          if not files:
+              print("WARNING: FPPDeviceInfoPlusPlugin.m not found")
+          for f in files:
+              with open(f, 'r') as fh:
+                  content = fh.read()
+              patched = content.replace('[processInfo isiOSAppOnVision]', 'NO')
+              with open(f, 'w') as fh:
+                  fh.write(patched)
+              changed = 'PATCHED' if patched != content else 'no change'
+              print(f'{changed}: {f}')
+          EOF
 
       - name: Build IPA (no codesign)
         working-directory: app
