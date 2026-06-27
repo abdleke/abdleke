@@ -30,6 +30,8 @@ class ProjectDetailScreen extends StatelessWidget {
     }
 
     final spent = prov.getProjectSpent(projectId);
+    final committed = prov.getProjectCommitted(projectId);
+    final collected = prov.getProjectCollected(projectId);
     final depenses = prov.visibleDepenses.where((d) => d.projetId == projectId).toList();
     final manager = prov.members.cast<dynamic>().firstWhere((m) => m.id == project.responsableId, orElse: () => null);
 
@@ -68,6 +70,8 @@ class ProjectDetailScreen extends StatelessWidget {
                   _InfoCard(
                     project: project,
                     spent: spent,
+                    committed: committed,
+                    collected: collected,
                     manager: manager,
                     currency: prov.currency,
                     lang: lang,
@@ -101,14 +105,17 @@ class ProjectDetailScreen extends StatelessWidget {
 class _InfoCard extends StatelessWidget {
   final dynamic project;
   final double spent;
+  final double committed;
+  final double collected;
   final dynamic manager;
   final String currency, lang;
 
-  const _InfoCard({required this.project, required this.spent, required this.manager, required this.currency, required this.lang});
+  const _InfoCard({required this.project, required this.spent, required this.committed, required this.collected, required this.manager, required this.currency, required this.lang});
 
   @override
   Widget build(BuildContext context) {
     final s = (String k) => AppStrings.get(k, lang);
+    final isPonctuel = project.type == ProjectType.ponctuel;
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.border)),
@@ -120,11 +127,22 @@ class _InfoCard extends StatelessWidget {
           _row(s('projects.manager'), manager?.fullName ?? '—'),
           _row(s('projects.startDate'), project.dateDebut),
           if (project.dateFin != null) _row(s('projects.endDate'), project.dateFin),
-          _row(s('projects.type'), project.type == ProjectType.ponctuel ? s('projects.ponctuel') : s('projects.standard')),
+          _row(s('projects.type'), isPonctuel ? s('projects.ponctuel') : s('projects.standard')),
           const SizedBox(height: 16),
           Text(s('projects.budgetUsage'), style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
           BudgetBar(spent: spent, budget: project.budget, currency: currency),
+          if (isPonctuel && committed > 0) ...[
+            const SizedBox(height: 16),
+            Text(s('projects.fundraising'), style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(
+              '${s('projects.committed')}: ${committed.toStringAsFixed(0)} $currency',
+              style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textSecondary),
+            ),
+            const SizedBox(height: 6),
+            BudgetBar(spent: collected, budget: committed, currency: currency),
+          ],
         ],
       ),
     );

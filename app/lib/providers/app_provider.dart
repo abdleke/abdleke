@@ -151,9 +151,12 @@ class AppProvider extends ChangeNotifier {
         _cotisations = (data['cotisations'] as List).map((e) => Cotisation.fromJson(e as Map<String, dynamic>)).toList();
         _exercices = ((data['exercices'] as List?) ?? []).map((e) => ExerciceAnnuel.fromJson(e as Map<String, dynamic>)).toList();
         _echeances = ((data['echeances'] as List?) ?? []).map((e) => Echeance.fromJson(e as Map<String, dynamic>)).toList();
-      } catch (_) { _loadSeedLocal(); }
+      } catch (e) {
+        // Parsing error: do not overwrite user data with seed — keep whatever was loaded
+        debugPrint('[Jamiyati] Erreur lecture données locales: $e');
+      }
     } else {
-      _loadSeedLocal();
+      _loadSeedLocal(); // First launch only
     }
     _restoreSession(prefs);
     notifyListeners();
@@ -281,8 +284,24 @@ class AppProvider extends ChangeNotifier {
           .fold(0.0, (sum, c) => sum + c.montantTotal);
 
   double collecteExercice(String exerciceId) {
-    final ids = _cotisations.where((c) => c.exerciceId == exerciceId).map((c) => c.id).toSet();
+    final ids = _cotisations
+        .where((c) => c.exerciceId == exerciceId && c.type == CotisationType.normale)
+        .map((c) => c.id).toSet();
     return _echeances.where((e) => ids.contains(e.cotisationId) && e.statut == EcheanceStatus.validee)
+        .fold(0.0, (sum, e) => sum + e.montant);
+  }
+
+  double getProjectCommitted(String projetId) =>
+      _cotisations
+          .where((c) => c.projetId == projetId && c.type == CotisationType.dediee)
+          .fold(0.0, (sum, c) => sum + c.montantTotal);
+
+  double getProjectCollected(String projetId) {
+    final cotIds = _cotisations
+        .where((c) => c.projetId == projetId && c.type == CotisationType.dediee)
+        .map((c) => c.id).toSet();
+    return _echeances
+        .where((e) => cotIds.contains(e.cotisationId) && e.statut == EcheanceStatus.validee)
         .fold(0.0, (sum, e) => sum + e.montant);
   }
 
