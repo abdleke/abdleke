@@ -242,8 +242,11 @@ class AppProvider extends ChangeNotifier {
   List<Project> get visibleProjects {
     final user = currentUser;
     if (user == null) return [];
-    if (user.role == MemberRole.admin || user.role == MemberRole.tresorier) return List.unmodifiable(_projects);
-    return List.unmodifiable(_projects.where((p) => p.responsableId == user.id));
+    if (user.role == MemberRole.chefProjet) {
+      return List.unmodifiable(_projects.where((p) => p.responsableId == user.id));
+    }
+    // admin, trésorier, membre: see all projects
+    return List.unmodifiable(_projects);
   }
 
   List<Cotisation> get visibleCotisations {
