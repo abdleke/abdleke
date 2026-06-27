@@ -69,6 +69,12 @@ jobs:
         working-directory: app
         run: flutter pub get
 
+      - name: Patch device_info_plus (isiOSAppOnVision compile fix)
+        run: |
+          find $HOME/.pub-cache -name "FPPDeviceInfoPlusPlugin.m" | while read f; do
+            sed -i '' 's/\[processInfo isiOSAppOnVision\]/NO/g' "$f"
+          done
+
       - name: Build IPA (no codesign)
         working-directory: app
         run: flutter build ipa --no-codesign
