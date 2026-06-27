@@ -59,6 +59,16 @@ class AppProvider extends ChangeNotifier {
     await _initWithSupabase(prefs);
   }
 
+  Future<List<Map<String, dynamic>>> _safeSelect(String table) async {
+    try {
+      final data = await _db.from(table).select();
+      return List<Map<String, dynamic>>.from(data as List);
+    } catch (e) {
+      debugPrint('[Jamiyati] Erreur lecture $table: $e');
+      return [];
+    }
+  }
+
   Future<void> _initWithSupabase(SharedPreferences prefs) async {
     try {
       final check = await _db.from('members').select('id').limit(1);
@@ -66,25 +76,26 @@ class AppProvider extends ChangeNotifier {
         _initEmpty();
         await _db.from('members').insert(_members.first.toJson());
       }
-
-      final results = await Future.wait([
-        _db.from('members').select(),
-        _db.from('projects').select(),
-        _db.from('depenses').select(),
-        _db.from('cotisations').select(),
-        _db.from('exercices').select(),
-        _db.from('echeances').select(),
-      ]);
-
-      _members = (results[0] as List).map((e) => Member.fromJson(e as Map<String, dynamic>)).toList();
-      _projects = (results[1] as List).map((e) => Project.fromJson(e as Map<String, dynamic>)).toList();
-      _depenses = (results[2] as List).map((e) => Depense.fromJson(e as Map<String, dynamic>)).toList();
-      _cotisations = (results[3] as List).map((e) => Cotisation.fromJson(e as Map<String, dynamic>)).toList();
-      _exercices = (results[4] as List).map((e) => ExerciceAnnuel.fromJson(e as Map<String, dynamic>)).toList();
-      _echeances = (results[5] as List).map((e) => Echeance.fromJson(e as Map<String, dynamic>)).toList();
     } catch (e) {
-      debugPrint('[Jamiyati] Erreur connexion Supabase: $e');
+      debugPrint('[Jamiyati] Erreur init membres: $e');
     }
+
+    final membersData    = await _safeSelect('members');
+    final projectsData   = await _safeSelect('projects');
+    final depensesData   = await _safeSelect('depenses');
+    final cotisationsData = await _safeSelect('cotisations');
+    final exercicesData  = await _safeSelect('exercices');
+    final echeancesData  = await _safeSelect('echeances');
+
+    if (membersData.isNotEmpty) {
+      _members = membersData.map((e) => Member.fromJson(e)).toList();
+    }
+    _projects    = projectsData.map((e) => Project.fromJson(e)).toList();
+    _depenses    = depensesData.map((e) => Depense.fromJson(e)).toList();
+    _cotisations = cotisationsData.map((e) => Cotisation.fromJson(e)).toList();
+    _exercices   = exercicesData.map((e) => ExerciceAnnuel.fromJson(e)).toList();
+    _echeances   = echeancesData.map((e) => Echeance.fromJson(e)).toList();
+
     _setupStreams();
     _restoreSession(prefs);
     notifyListeners();
