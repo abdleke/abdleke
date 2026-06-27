@@ -1,0 +1,48 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - claude/association-finance-app-diowtw
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.24.0'
+          channel: stable
+          cache: true
+
+      - name: Add Android platform
+        working-directory: app
+        run: flutter create --platforms android .
+
+      - name: Get dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Build APK (release)
+        working-directory: app
+        run: flutter build apk --release --split-per-abi
+
+      - name: Upload APKs
+        uses: actions/upload-artifact@v4
+        with:
+          name: jamiyati-apk
+          path: app/build/app/outputs/flutter-apk/*.apk
+          retention-days: 30
