@@ -72,7 +72,7 @@ jobs:
       - name: Patch device_info_plus (isiOSAppOnVision compile fix)
         run: |
           python3 - <<'EOF'
-          import os, glob
+          import os, glob, re
           pattern = os.path.expanduser('~/.pub-cache/**/FPPDeviceInfoPlusPlugin.m')
           files = glob.glob(pattern, recursive=True)
           if not files:
@@ -80,7 +80,14 @@ jobs:
           for f in files:
               with open(f, 'r') as fh:
                   content = fh.read()
-              patched = content.replace('[processInfo isiOSAppOnVision]', 'NO')
+              # Print line 34 for debugging
+              lines = content.splitlines()
+              if len(lines) >= 34:
+                  print(f"line 34: {lines[33]}")
+              # Replace both dot-notation and bracket-notation
+              patched = content
+              patched = re.sub(r'processInfo\.isiOSAppOnVision', 'NO', patched)
+              patched = re.sub(r'\[processInfo\s+isiOSAppOnVision\]', 'NO', patched)
               with open(f, 'w') as fh:
                   fh.write(patched)
               changed = 'PATCHED' if patched != content else 'no change'
