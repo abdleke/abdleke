@@ -36,20 +36,13 @@ jobs:
         working-directory: app
         run: |
           MANIFEST=android/app/src/main/AndroidManifest.xml
-          echo "=== Manifest avant patch ==="
+          if grep -q "android.permission.INTERNET" "$MANIFEST"; then
+            echo "INTERNET permission already present"
+          else
+            sed -i '/<manifest /a\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
+            echo "Added INTERNET permission"
+          fi
           cat "$MANIFEST"
-          python3 -c "
-import re
-with open('$MANIFEST') as f:
-    c = f.read()
-if 'INTERNET' not in c:
-    c = re.sub(r'(<manifest\b[^>]*>)', r'\1\n    <uses-permission android:name=\"android.permission.INTERNET\"/>', c)
-    with open('$MANIFEST', 'w') as f:
-        f.write(c)
-    print('INTERNET permission ajoutée')
-else:
-    print('INTERNET permission déjà présente')
-"
 
       - name: Get dependencies
         working-directory: app
