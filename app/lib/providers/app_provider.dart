@@ -67,12 +67,23 @@ class AppProvider extends ChangeNotifier {
       final data = await _db.from(table).select();
       return List<Map<String, dynamic>>.from(data as List);
     } catch (e) {
+      final msg = e.toString();
+      _initStatus = 'Erreur $table: ${msg.length > 120 ? msg.substring(0, 120) : msg}';
       debugPrint('[Jamiyati] Erreur lecture $table: $e');
       return [];
     }
   }
 
   Future<void> _initWithSupabase(SharedPreferences prefs) async {
+    // Vérifier que Supabase est bien initialisé
+    try {
+      Supabase.instance.client;
+    } catch (e) {
+      _initStatus = 'Supabase non initialisé: $e';
+      notifyListeners();
+      return;
+    }
+
     try {
       final check = await _db.from('members').select('id').limit(1);
       if ((check as List).isEmpty) {
@@ -80,30 +91,34 @@ class AppProvider extends ChangeNotifier {
         await _db.from('members').insert(_members.first.toJson());
       }
     } catch (e) {
-      _initStatus = 'Erreur Supabase: $e';
+      _initStatus = 'Erreur connexion: $e';
       debugPrint('[Jamiyati] Erreur init membres: $e');
       notifyListeners();
     }
 
-    final membersData    = await _safeSelect('members');
-    final projectsData   = await _safeSelect('projects');
-    final depensesData   = await _safeSelect('depenses');
-    final cotisationsData = await _safeSelect('cotisations');
-    final exercicesData  = await _safeSelect('exercices');
-    final echeancesData  = await _safeSelect('echeances');
+    // Chargement parallèle
+    final results = await Future.wait([
+      _safeSelect('members'),
+      _safeSelect('projects'),
+      _safeSelect('depenses'),
+      _safeSelect('cotisations'),
+      _safeSelect('exercices'),
+      _safeSelect('echeances'),
+    ]);
 
+    final membersData = results[0];
     if (membersData.isNotEmpty) {
       _members = membersData.map((e) => Member.fromJson(e)).toList();
       _initStatus = '${_members.length} membre(s) chargé(s)';
-    } else {
+    } else if (!_initStatus.startsWith('Erreur')) {
       _initStatus = 'Aucun membre chargé — vérifier Supabase';
     }
 
-    _projects    = projectsData.map((e) => Project.fromJson(e)).toList();
-    _depenses    = depensesData.map((e) => Depense.fromJson(e)).toList();
-    _cotisations = cotisationsData.map((e) => Cotisation.fromJson(e)).toList();
-    _exercices   = exercicesData.map((e) => ExerciceAnnuel.fromJson(e)).toList();
-    _echeances   = echeancesData.map((e) => Echeance.fromJson(e)).toList();
+    _projects    = results[1].map((e) => Project.fromJson(e)).toList();
+    _depenses    = results[2].map((e) => Depense.fromJson(e)).toList();
+    _cotisations = results[3].map((e) => Cotisation.fromJson(e)).toList();
+    _exercices   = results[4].map((e) => ExerciceAnnuel.fromJson(e)).toList();
+    _echeances   = results[5].map((e) => Echeance.fromJson(e)).toList();
 
     _setupStreams();
     _restoreSession(prefs);
