@@ -49,7 +49,7 @@ jobs:
 
   ios:
     name: iOS IPA
-    runs-on: macos-latest
+    runs-on: macos-15
 
     steps:
       - name: Checkout
@@ -69,21 +69,13 @@ jobs:
         working-directory: app
         run: flutter pub get
 
-      - name: Build iOS (no codesign)
+      - name: Build IPA (no codesign)
         working-directory: app
-        run: flutter build ios --release --no-codesign
-
-      - name: Package IPA
-        working-directory: app
-        run: |
-          mkdir -p build/ios/ipa/Payload
-          cp -r build/ios/iphoneos/Runner.app build/ios/ipa/Payload/
-          cd build/ios/ipa
-          zip -r ../jamiyati.ipa Payload
+        run: flutter build ipa --no-codesign
 
       - name: Upload IPA
         uses: actions/upload-artifact@v4
         with:
           name: jamiyati-ipa
-          path: app/build/ios/jamiyati.ipa
+          path: app/build/ios/ipa/*.ipa
           retention-days: 30
