@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -10,9 +9,6 @@ import '../models/depense.dart';
 import '../models/cotisation.dart';
 import '../models/exercice_annuel.dart';
 import '../models/echeance.dart';
-import '../data/seed_data.dart';
-import '../supabase_config.dart';
-
 const _uuid = Uuid();
 
 class AppProvider extends ChangeNotifier {
@@ -26,7 +22,6 @@ class AppProvider extends ChangeNotifier {
   String _language = 'ar';
   String _currency = 'MAD';
   bool _isLoggedIn = false;
-  bool _supabaseAvailable = false;
 
   StreamSubscription<List<Map<String, dynamic>>>? _membersSub;
   StreamSubscription<List<Map<String, dynamic>>>? _projectsSub;
@@ -45,7 +40,6 @@ class AppProvider extends ChangeNotifier {
   String get language => _language;
   String get currency => _currency;
   bool get isLoggedIn => _isLoggedIn;
-  bool get isOnlineMode => _supabaseAvailable;
 
   Member? get currentUser =>
       _members.cast<Member?>().firstWhere((m) => m?.id == _currentUserId, orElse: () => null);
@@ -62,17 +56,7 @@ class AppProvider extends ChangeNotifier {
     final prefs = await SharedPreferences.getInstance();
     _language = prefs.getString('jamiyati_lang') ?? 'ar';
     _currency = prefs.getString('jamiyati_currency') ?? 'MAD';
-
-    _supabaseAvailable = supabaseConfigured;
-    if (_supabaseAvailable) {
-      try { Supabase.instance.client; } catch (_) { _supabaseAvailable = false; }
-    }
-
-    if (_supabaseAvailable) {
-      await _initWithSupabase(prefs);
-    } else {
-      await _initLocal(prefs);
-    }
+    await _initWithSupabase(prefs);
   }
 
   Future<void> _initWithSupabase(SharedPreferences prefs) async {
@@ -99,10 +83,7 @@ class AppProvider extends ChangeNotifier {
       _exercices = (results[4] as List).map((e) => ExerciceAnnuel.fromJson(e as Map<String, dynamic>)).toList();
       _echeances = (results[5] as List).map((e) => Echeance.fromJson(e as Map<String, dynamic>)).toList();
     } catch (e) {
-      debugPrint('[Jamiyati] Supabase indisponible, basculement hors-ligne: $e');
-      _supabaseAvailable = false;
-      await _initLocal(prefs);
-      return;
+      debugPrint('[Jamiyati] Erreur connexion Supabase: $e');
     }
     _setupStreams();
     _restoreSession(prefs);
@@ -159,51 +140,15 @@ class AppProvider extends ChangeNotifier {
     _currentUserId = '';
     _isLoggedIn = false;
     notifyListeners();
-    if (_supabaseAvailable) {
-      try {
-        for (final table in ['echeances', 'cotisations', 'depenses', 'exercices', 'projects', 'members']) {
-          await _db.from(table).delete().neq('id', '__purge__');
-        }
-        await _db.from('members').insert(_members.first.toJson());
-      } catch (e) {
-        debugPrint('[Jamiyati] Erreur purge Supabase: $e');
+    try {
+      for (final table in ['echeances', 'cotisations', 'depenses', 'exercices', 'projects', 'members']) {
+        await _db.from(table).delete().neq('id', '__purge__');
       }
-    } else {
-      await _persistLocal();
+      await _db.from('members').insert(_members.first.toJson());
+    } catch (e) {
+      debugPrint('[Jamiyati] Erreur purge Supabase: $e');
     }
     await _persistAuth();
-  }
-
-  Future<void> _initLocal(SharedPreferences prefs) async {
-    final raw = prefs.getString('jamiyati_data');
-    if (raw != null) {
-      try {
-        final data = jsonDecode(raw) as Map<String, dynamic>;
-        _members = (data['members'] as List).map((e) => Member.fromJson(e as Map<String, dynamic>)).toList();
-        _projects = (data['projects'] as List).map((e) => Project.fromJson(e as Map<String, dynamic>)).toList();
-        _depenses = (data['depenses'] as List).map((e) => Depense.fromJson(e as Map<String, dynamic>)).toList();
-        _cotisations = (data['cotisations'] as List).map((e) => Cotisation.fromJson(e as Map<String, dynamic>)).toList();
-        _exercices = ((data['exercices'] as List?) ?? []).map((e) => ExerciceAnnuel.fromJson(e as Map<String, dynamic>)).toList();
-        _echeances = ((data['echeances'] as List?) ?? []).map((e) => Echeance.fromJson(e as Map<String, dynamic>)).toList();
-      } catch (e) {
-        // Parsing error: do not overwrite user data with seed — keep whatever was loaded
-        debugPrint('[Jamiyati] Erreur lecture données locales: $e');
-      }
-    } else {
-      _initEmpty();
-      await _persistLocal(); // First launch only — save default admin
-    }
-    _restoreSession(prefs);
-    notifyListeners();
-  }
-
-  void _loadSeedLocal() {
-    _members = SeedData.members();
-    _projects = SeedData.projects();
-    _depenses = SeedData.depenses();
-    _cotisations = SeedData.cotisations();
-    _exercices = SeedData.exercices();
-    _echeances = SeedData.echeances();
   }
 
   void _restoreSession(SharedPreferences prefs) {
@@ -283,7 +228,6 @@ class AppProvider extends ChangeNotifier {
     if (user.role == MemberRole.chefProjet) {
       return List.unmodifiable(_projects.where((p) => p.responsableId == user.id));
     }
-    // admin, trésorier, membre: see all projects
     return List.unmodifiable(_projects);
   }
 
@@ -456,7 +400,6 @@ class AppProvider extends ChangeNotifier {
   // ── Exercices ──────────────────────────────────────────────────
 
   void addExercice(ExerciceAnnuel e) {
-    // Désactiver l'exercice actif s'il y en a un
     _exercices = _exercices.map((x) =>
       x.statut == ExerciceStatus.actif ? x.copyWith(statut: ExerciceStatus.cloture) : x).toList();
     _exercices = [..._exercices, e];
@@ -537,32 +480,16 @@ class AppProvider extends ChangeNotifier {
     notifyListeners(); _upsert('echeances', updated.toJson());
   }
 
-  // ── Storage helpers ────────────────────────────────────────────
+  // ── Storage ────────────────────────────────────────────────────
 
   void _upsert(String table, Map<String, dynamic> data) {
-    if (_supabaseAvailable) {
-      _db.from(table).upsert(data).catchError(
-        (e) => debugPrint('[Jamiyati] Supabase upsert error ($table): $e'));
-    } else { _persistLocal(); }
+    _db.from(table).upsert(data).catchError(
+      (e) => debugPrint('[Jamiyati] upsert error ($table): $e'));
   }
 
   void _remove(String table, String id) {
-    if (_supabaseAvailable) {
-      _db.from(table).delete().eq('id', id).catchError(
-        (e) => debugPrint('[Jamiyati] Supabase delete error ($table/$id): $e'));
-    } else { _persistLocal(); }
-  }
-
-  Future<void> _persistLocal() async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('jamiyati_data', jsonEncode({
-      'members': _members.map((m) => m.toJson()).toList(),
-      'projects': _projects.map((p) => p.toJson()).toList(),
-      'depenses': _depenses.map((d) => d.toJson()).toList(),
-      'cotisations': _cotisations.map((c) => c.toJson()).toList(),
-      'exercices': _exercices.map((e) => e.toJson()).toList(),
-      'echeances': _echeances.map((e) => e.toJson()).toList(),
-    }));
+    _db.from(table).delete().eq('id', id).catchError(
+      (e) => debugPrint('[Jamiyati] delete error ($table/$id): $e'));
   }
 
   Future<void> _persistAuth() async {

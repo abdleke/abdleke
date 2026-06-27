@@ -290,12 +290,6 @@ class _AdminSection extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 12),
-        _InfoRow(
-          icon: prov.isOnlineMode ? Icons.cloud_done_rounded : Icons.cloud_off_rounded,
-          label: prov.isOnlineMode ? s('profile.onlineMode') : s('profile.offlineMode'),
-          value: '',
-          iconColor: prov.isOnlineMode ? AppTheme.success : AppTheme.warning,
-        ),
         _InfoRow(icon: Icons.group_rounded, label: s('profile.membersCount'), value: prov.members.length.toString()),
         _InfoRow(icon: Icons.folder_rounded, label: s('profile.projectsCount'), value: prov.projects.length.toString()),
         const SizedBox(height: 8),
