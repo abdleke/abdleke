@@ -235,8 +235,7 @@ class AppProvider extends ChangeNotifier {
 
   bool canManageProjects() => currentUser?.role == MemberRole.admin;
 
-  bool canAddCotisation() =>
-      currentUser?.role == MemberRole.admin || currentUser?.role == MemberRole.tresorier;
+  bool canAddCotisation() => _isLoggedIn;
 
   // ── Visibility filters ─────────────────────────────────────────
 

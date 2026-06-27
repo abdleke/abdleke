@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
 import '../models/cotisation.dart';
 import '../models/echeance.dart';
+import '../models/member.dart';
 import '../models/project.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_badge.dart';
@@ -566,6 +567,10 @@ class _CotisationFormState extends State<_CotisationForm> {
     _dateDebut =
         prov.activeExercice?.dateDebut ??
         DateTime.now().toIso8601String().split('T')[0];
+    final user = prov.currentUser;
+    if (user != null && user.role == MemberRole.membre) {
+      _membreId = user.id;
+    }
   }
 
   @override
@@ -580,6 +585,8 @@ class _CotisationFormState extends State<_CotisationForm> {
             p.type == ProjectType.ponctuel &&
             p.statut == ProjectStatus.actif)
         .toList();
+    final currentUser = prov.currentUser;
+    final isMembre = currentUser?.role == MemberRole.membre;
 
     return Padding(
       padding: EdgeInsets.only(
@@ -602,21 +609,30 @@ class _CotisationFormState extends State<_CotisationForm> {
                   style: GoogleFonts.cairo(
                       fontSize: 18, fontWeight: FontWeight.w700)),
               const SizedBox(height: 16),
-              DropdownButtonFormField<String>(
-                value: _membreId.isNotEmpty ? _membreId : null,
-                decoration: InputDecoration(
-                    labelText: s('cotisations.member'),
-                    labelStyle: GoogleFonts.cairo()),
-                items: activeMembers
-                    .map((m) => DropdownMenuItem(
-                        value: m.id,
-                        child: Text(m.fullName, style: GoogleFonts.cairo())))
-                    .toList(),
-                onChanged: (v) => setState(() => _membreId = v ?? ''),
-                validator: (v) =>
-                    (v == null || v.isEmpty) ? '⚠' : null,
-                style: GoogleFonts.cairo(color: AppTheme.textPrimary),
-              ),
+              if (isMembre)
+                InputDecorator(
+                  decoration: InputDecoration(
+                      labelText: s('cotisations.member'),
+                      labelStyle: GoogleFonts.cairo()),
+                  child: Text(currentUser!.fullName,
+                      style: GoogleFonts.cairo(color: AppTheme.textPrimary)),
+                )
+              else
+                DropdownButtonFormField<String>(
+                  value: _membreId.isNotEmpty ? _membreId : null,
+                  decoration: InputDecoration(
+                      labelText: s('cotisations.member'),
+                      labelStyle: GoogleFonts.cairo()),
+                  items: activeMembers
+                      .map((m) => DropdownMenuItem(
+                          value: m.id,
+                          child: Text(m.fullName, style: GoogleFonts.cairo())))
+                      .toList(),
+                  onChanged: (v) => setState(() => _membreId = v ?? ''),
+                  validator: (v) =>
+                      (v == null || v.isEmpty) ? '⚠' : null,
+                  style: GoogleFonts.cairo(color: AppTheme.textPrimary),
+                ),
               const SizedBox(height: 12),
               DropdownButtonFormField<CotisationType>(
                 value: _type,

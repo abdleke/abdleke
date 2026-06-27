@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
 import '../models/project.dart';
 import '../models/depense.dart';
+import '../models/member.dart';
 import '../theme/app_theme.dart';
 import '../widgets/budget_bar.dart';
 import '../widgets/status_badge.dart';
@@ -294,9 +295,17 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     final e = widget.existing;
     _desc = e?.description ?? '';
     _date = e?.date ?? DateTime.now().toIso8601String().split('T')[0];
-    _membreId = e?.membreId ?? '';
     _montant = e?.montant ?? 0;
     _cat = e?.categorie ?? DepenseCategorie.materiel;
+    final prov = context.read<AppProvider>();
+    final user = prov.currentUser;
+    if (e != null) {
+      _membreId = e.membreId;
+    } else if (user?.role == MemberRole.membre) {
+      _membreId = user!.id;
+    } else {
+      _membreId = '';
+    }
   }
 
   @override
@@ -306,6 +315,8 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     final s = (String k) => AppStrings.get(k, lang);
     final activeMembers = prov.members.where((m) => m.statut.name == 'actif').toList();
     final cats = DepenseCategorie.values;
+    final currentUser = prov.currentUser;
+    final isMembre = currentUser?.role == MemberRole.membre;
 
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
@@ -327,14 +338,20 @@ class _ExpenseFormState extends State<_ExpenseForm> {
                 Expanded(child: TextFormField(initialValue: _date, decoration: InputDecoration(labelText: s('expenses.date'), labelStyle: GoogleFonts.cairo()), style: GoogleFonts.cairo(), onSaved: (v) => _date = v ?? '')),
               ]),
               const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _membreId.isNotEmpty ? _membreId : null,
-                decoration: InputDecoration(labelText: s('expenses.submittedBy'), labelStyle: GoogleFonts.cairo()),
-                items: activeMembers.map((m) => DropdownMenuItem(value: m.id, child: Text(m.fullName, style: GoogleFonts.cairo()))).toList(),
-                onChanged: (v) => _membreId = v ?? '',
-                validator: (v) => (v == null || v.isEmpty) ? '⚠' : null,
-                style: GoogleFonts.cairo(color: AppTheme.textPrimary),
-              ),
+              if (isMembre)
+                InputDecorator(
+                  decoration: InputDecoration(labelText: s('expenses.submittedBy'), labelStyle: GoogleFonts.cairo()),
+                  child: Text(currentUser!.fullName, style: GoogleFonts.cairo(color: AppTheme.textPrimary)),
+                )
+              else
+                DropdownButtonFormField<String>(
+                  value: _membreId.isNotEmpty ? _membreId : null,
+                  decoration: InputDecoration(labelText: s('expenses.submittedBy'), labelStyle: GoogleFonts.cairo()),
+                  items: activeMembers.map((m) => DropdownMenuItem(value: m.id, child: Text(m.fullName, style: GoogleFonts.cairo()))).toList(),
+                  onChanged: (v) => _membreId = v ?? '',
+                  validator: (v) => (v == null || v.isEmpty) ? '⚠' : null,
+                  style: GoogleFonts.cairo(color: AppTheme.textPrimary),
+                ),
               const SizedBox(height: 12),
               DropdownButtonFormField<DepenseCategorie>(
                 value: _cat,
