@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_logo.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -56,28 +57,19 @@ class _LoginScreenState extends State<LoginScreen> {
                 const SizedBox(height: 40),
 
                 // Logo
-                Center(
-                  child: Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF7C3AED), Color(0xFF5B21B6)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(24),
-                      boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.35), blurRadius: 20, offset: const Offset(0, 8))],
-                    ),
-                    child: const Center(
-                      child: Text('ج', style: TextStyle(fontSize: 44, color: Colors.white, fontFamily: 'Cairo', fontWeight: FontWeight.w800)),
-                    ),
-                  ),
-                ),
+                const Center(child: AppLogo(size: 96)),
                 const SizedBox(height: 20),
 
                 // App name
-                Center(child: Text('جمعيتي', style: GoogleFonts.cairo(fontSize: 30, fontWeight: FontWeight.w900, color: AppTheme.primary))),
+                Center(
+                  child: ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [Color(0xFF6366F1), Color(0xFFEC4899), Color(0xFFF59E0B)],
+                      stops: [0.0, 0.55, 1.0],
+                    ).createShader(bounds),
+                    child: Text('جمعيتي', style: GoogleFonts.cairo(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white)),
+                  ),
+                ),
                 Center(child: Text(s('app.tagline'), style: GoogleFonts.cairo(fontSize: 14, color: AppTheme.textSecondary))),
                 const SizedBox(height: 48),
 
