@@ -22,6 +22,9 @@ class AppProvider extends ChangeNotifier {
   String _language = 'ar';
   String _currency = 'MAD';
   bool _isLoggedIn = false;
+  String _initStatus = 'initialisation...';
+
+  String get initStatus => _initStatus;
 
   StreamSubscription<List<Map<String, dynamic>>>? _membersSub;
   StreamSubscription<List<Map<String, dynamic>>>? _projectsSub;
@@ -77,7 +80,9 @@ class AppProvider extends ChangeNotifier {
         await _db.from('members').insert(_members.first.toJson());
       }
     } catch (e) {
+      _initStatus = 'Erreur Supabase: $e';
       debugPrint('[Jamiyati] Erreur init membres: $e');
+      notifyListeners();
     }
 
     final membersData    = await _safeSelect('members');
@@ -89,7 +94,11 @@ class AppProvider extends ChangeNotifier {
 
     if (membersData.isNotEmpty) {
       _members = membersData.map((e) => Member.fromJson(e)).toList();
+      _initStatus = '${_members.length} membre(s) chargé(s)';
+    } else {
+      _initStatus = 'Aucun membre chargé — vérifier Supabase';
     }
+
     _projects    = projectsData.map((e) => Project.fromJson(e)).toList();
     _depenses    = depensesData.map((e) => Depense.fromJson(e)).toList();
     _cotisations = cotisationsData.map((e) => Cotisation.fromJson(e)).toList();
