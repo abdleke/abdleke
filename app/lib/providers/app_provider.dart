@@ -78,7 +78,10 @@ class AppProvider extends ChangeNotifier {
   Future<void> _initWithSupabase(SharedPreferences prefs) async {
     try {
       final check = await _db.from('members').select('id').limit(1);
-      if ((check as List).isEmpty) await _seedSupabase();
+      if ((check as List).isEmpty) {
+        _initEmpty();
+        await _db.from('members').insert(_members.first.toJson());
+      }
 
       final results = await Future.wait([
         _db.from('members').select(),
@@ -130,14 +133,45 @@ class AppProvider extends ChangeNotifier {
     });
   }
 
-  Future<void> _seedSupabase() async {
-    await _db.from('members').insert(SeedData.members().map((m) => m.toJson()).toList());
-    await _db.from('projects').insert(SeedData.projects().map((p) => p.toJson()).toList());
-    await _db.from('depenses').insert(SeedData.depenses().map((d) => d.toJson()).toList());
-    await _db.from('exercices').insert(SeedData.exercices().map((e) => e.toJson()).toList());
-    await _db.from('cotisations').insert(SeedData.cotisations().map((c) => c.toJson()).toList());
-    await _db.from('echeances').insert(SeedData.echeances().map((e) => e.toJson()).toList());
-    debugPrint('[Jamiyati] Donnees initiales envoyees vers Supabase.');
+  void _initEmpty() {
+    final today = DateTime.now().toIso8601String().split('T')[0];
+    _members = [
+      Member(
+        id: 'admin-init',
+        prenom: 'Admin',
+        nom: '',
+        telephone: '0661234567',
+        dateAdhesion: today,
+        statut: MemberStatus.actif,
+        role: MemberRole.admin,
+        motDePasse: 'admin123',
+      ),
+    ];
+    _projects = [];
+    _depenses = [];
+    _cotisations = [];
+    _exercices = [];
+    _echeances = [];
+  }
+
+  Future<void> resetData() async {
+    _initEmpty();
+    _currentUserId = '';
+    _isLoggedIn = false;
+    notifyListeners();
+    if (_supabaseAvailable) {
+      try {
+        for (final table in ['echeances', 'cotisations', 'depenses', 'exercices', 'projects', 'members']) {
+          await _db.from(table).delete().neq('id', '__purge__');
+        }
+        await _db.from('members').insert(_members.first.toJson());
+      } catch (e) {
+        debugPrint('[Jamiyati] Erreur purge Supabase: $e');
+      }
+    } else {
+      await _persistLocal();
+    }
+    await _persistAuth();
   }
 
   Future<void> _initLocal(SharedPreferences prefs) async {
@@ -156,7 +190,8 @@ class AppProvider extends ChangeNotifier {
         debugPrint('[Jamiyati] Erreur lecture données locales: $e');
       }
     } else {
-      _loadSeedLocal(); // First launch only
+      _initEmpty();
+      await _persistLocal(); // First launch only — save default admin
     }
     _restoreSession(prefs);
     notifyListeners();

@@ -304,7 +304,39 @@ class _AdminSection extends StatelessWidget {
           icon: const Icon(Icons.manage_accounts_rounded, size: 18),
           label: Text(s('members.title'), style: GoogleFonts.cairo()),
         ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
+          onPressed: () => _confirmReset(context, prov, lang),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: AppTheme.danger,
+            side: BorderSide(color: AppTheme.danger),
+          ),
+          icon: const Icon(Icons.delete_sweep_rounded, size: 18),
+          label: Text(s('profile.resetData'), style: GoogleFonts.cairo()),
+        ),
       ],
+    );
+  }
+
+  void _confirmReset(BuildContext context, AppProvider prov, String lang) {
+    final s = (String k) => AppStrings.get(k, lang);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s('profile.resetData'), style: GoogleFonts.cairo(color: AppTheme.danger, fontWeight: FontWeight.w700)),
+        content: Text(s('profile.resetConfirm'), style: GoogleFonts.cairo()),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(AppStrings.get('common.cancel', lang), style: GoogleFonts.cairo()),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.danger),
+            onPressed: () { Navigator.pop(ctx); prov.resetData(); },
+            child: Text(s('profile.resetData'), style: GoogleFonts.cairo(color: Colors.white)),
+          ),
+        ],
+      ),
     );
   }
 }
