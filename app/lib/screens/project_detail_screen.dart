@@ -127,7 +127,7 @@ class _InfoCard extends StatelessWidget {
           _row(s('projects.manager'), manager?.fullName ?? '—'),
           _row(s('projects.startDate'), project.dateDebut),
           if (project.dateFin != null) _row(s('projects.endDate'), project.dateFin),
-          _row(s('projects.type'), isPonctuel ? s('projects.ponctuel') : s('projects.standard')),
+          _row(s('projects.type'), isPonctuel ? s('projects.ponctuel') : s('projects.normale')),
           const SizedBox(height: 16),
           Text(s('projects.budgetUsage'), style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),

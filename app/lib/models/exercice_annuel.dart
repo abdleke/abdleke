@@ -8,6 +8,7 @@ class ExerciceAnnuel {
   final String dateDebut;
   final String dateFin;
   final ExerciceStatus statut;
+  final double budgetProvisoireTotal;
 
   const ExerciceAnnuel({
     required this.id,
@@ -17,6 +18,7 @@ class ExerciceAnnuel {
     required this.dateDebut,
     required this.dateFin,
     required this.statut,
+    this.budgetProvisoireTotal = 0,
   });
 
   factory ExerciceAnnuel.fromJson(Map<String, dynamic> json) => ExerciceAnnuel(
@@ -29,6 +31,8 @@ class ExerciceAnnuel {
         statut: (json['statut'] as String?) == 'cloture'
             ? ExerciceStatus.cloture
             : ExerciceStatus.actif,
+        budgetProvisoireTotal:
+            ((json['budgetProvisoireTotal'] ?? 0) as num).toDouble(),
       );
 
   Map<String, dynamic> toJson() => {
@@ -39,16 +43,19 @@ class ExerciceAnnuel {
         'dateDebut': dateDebut,
         'dateFin': dateFin,
         'statut': statut.name,
+        'budgetProvisoireTotal': budgetProvisoireTotal,
       };
 
   ExerciceAnnuel copyWith({
     String? id, String? libelle, int? annee, int? moisDebut,
     String? dateDebut, String? dateFin, ExerciceStatus? statut,
+    double? budgetProvisoireTotal,
   }) => ExerciceAnnuel(
     id: id ?? this.id, libelle: libelle ?? this.libelle,
     annee: annee ?? this.annee, moisDebut: moisDebut ?? this.moisDebut,
     dateDebut: dateDebut ?? this.dateDebut, dateFin: dateFin ?? this.dateFin,
     statut: statut ?? this.statut,
+    budgetProvisoireTotal: budgetProvisoireTotal ?? this.budgetProvisoireTotal,
   );
 
   String get periode => '$dateDebut → $dateFin';

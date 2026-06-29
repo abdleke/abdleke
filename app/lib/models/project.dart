@@ -1,4 +1,4 @@
-enum ProjectType { standard, ponctuel }
+enum ProjectType { normale, ponctuel }
 
 enum ProjectStatus { actif, termine, suspendu }
 
@@ -13,6 +13,7 @@ class Project {
   final ProjectStatus statut;
   final String responsableId;
   final double? cotisationDediee;
+  final String? exerciceId;
 
   const Project({
     required this.id,
@@ -25,13 +26,14 @@ class Project {
     required this.statut,
     required this.responsableId,
     this.cotisationDediee,
+    this.exerciceId,
   });
 
   factory Project.fromJson(Map<String, dynamic> json) => Project(
         id: json['id'] as String,
         nom: json['nom'] as String,
         description: json['description'] as String,
-        type: _typeFromString(json['type'] as String? ?? 'standard'),
+        type: _typeFromString(json['type'] as String? ?? 'normale'),
         budget: (json['budget'] as num).toDouble(),
         dateDebut: json['dateDebut'] as String,
         dateFin: json['dateFin'] as String?,
@@ -43,6 +45,7 @@ class Project {
         cotisationDediee: json['cotisationDediee'] != null
             ? (json['cotisationDediee'] as num).toDouble()
             : null,
+        exerciceId: json['exerciceId'] as String?,
       );
 
   Map<String, dynamic> toJson() => {
@@ -56,23 +59,26 @@ class Project {
         'statut': statut.name,
         'responsableId': responsableId,
         'cotisationDediee': cotisationDediee,
+        'exerciceId': exerciceId,
       };
 
   Project copyWith({
     String? id, String? nom, String? description, ProjectType? type,
     double? budget, String? dateDebut, String? dateFin,
     ProjectStatus? statut, String? responsableId, double? cotisationDediee,
+    String? exerciceId,
   }) => Project(
     id: id ?? this.id, nom: nom ?? this.nom, description: description ?? this.description,
     type: type ?? this.type, budget: budget ?? this.budget,
     dateDebut: dateDebut ?? this.dateDebut, dateFin: dateFin ?? this.dateFin,
     statut: statut ?? this.statut, responsableId: responsableId ?? this.responsableId,
     cotisationDediee: cotisationDediee ?? this.cotisationDediee,
+    exerciceId: exerciceId ?? this.exerciceId,
   );
 
-  // Backward compat: 'periodique' stored in old data
+  // Backward compat: 'standard' and 'periodique' stored in old data
   static ProjectType _typeFromString(String s) {
     if (s == 'ponctuel' || s == 'periodique') return ProjectType.ponctuel;
-    return ProjectType.standard;
+    return ProjectType.normale; // handles 'normale' and legacy 'standard'
   }
 }

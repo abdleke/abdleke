@@ -116,9 +116,12 @@ class _ExerciceHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = (String k) => AppStrings.get(k, lang);
-    final budget = prov.budgetExercice(exerciceId);
+    final exercice = prov.exercices.cast<dynamic>().firstWhere(
+        (e) => e.id == exerciceId, orElse: () => null);
+    final budgetProvisoire = exercice?.budgetProvisoireTotal as double? ?? 0.0;
+    final budgetReel = prov.budgetExercice(exerciceId);
     final collecte = prov.collecteExercice(exerciceId);
-    final pct = budget > 0 ? (collecte / budget).clamp(0.0, 1.0) : 0.0;
+    final pct = budgetReel > 0 ? (collecte / budgetReel).clamp(0.0, 1.0) : 0.0;
     final currency = prov.currency;
 
     return Container(
@@ -148,8 +151,11 @@ class _ExerciceHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _stat(s('exercice.budget'),
-                  '${budget.toStringAsFixed(0)} $currency'),
+              if (budgetProvisoire > 0)
+                _stat(s('exercice.budgetProvisoire'),
+                    '${budgetProvisoire.toStringAsFixed(0)} $currency'),
+              _stat(s('exercice.budgetReel'),
+                  '${budgetReel.toStringAsFixed(0)} $currency'),
               _stat(s('exercice.collected'),
                   '${collecte.toStringAsFixed(0)} $currency'),
               _stat('${(pct * 100).toStringAsFixed(0)}%',

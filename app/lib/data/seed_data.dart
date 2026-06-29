@@ -53,9 +53,10 @@ class SeedData {
         const Project(
           id: 'p1', nom: 'برنامج التضامن الشتوي',
           description: 'توزيع مساعدات على الأسر المحتاجة خلال فصل الشتاء',
-          type: ProjectType.standard, budget: 50000,
+          type: ProjectType.normale, budget: 15000,
           dateDebut: '2025-11-01', dateFin: '2026-03-31',
           statut: ProjectStatus.actif, responsableId: 'm3',
+          exerciceId: 'ex1',
         ),
         const Project(
           id: 'p2', nom: 'مهرجان الثقافة والتراث',
@@ -68,9 +69,10 @@ class SeedData {
         const Project(
           id: 'p3', nom: 'برنامج التعليم المستمر',
           description: 'دورات تدريبية وتعليمية لأعضاء الجمعية',
-          type: ProjectType.standard, budget: 30000,
+          type: ProjectType.normale, budget: 10000,
           dateDebut: '2025-09-01',
           statut: ProjectStatus.actif, responsableId: 'm3',
+          exerciceId: 'ex1',
         ),
       ];
 
@@ -120,6 +122,7 @@ class SeedData {
           id: 'ex1', libelle: 'Exercice 2026', annee: 2026,
           moisDebut: 10, dateDebut: '2025-10-01', dateFin: '2026-09-30',
           statut: ExerciceStatus.actif,
+          budgetProvisoireTotal: 35000,
         ),
       ];
 

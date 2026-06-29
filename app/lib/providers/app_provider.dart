@@ -305,6 +305,16 @@ class AppProvider extends ChangeNotifier {
         .fold(0.0, (sum, e) => sum + e.montant);
   }
 
+  // Budget alloué aux projets normaux de l'exercice (somme des budgets de projet)
+  double budgetAlloueExercice(String exerciceId) =>
+      _projects
+          .where((p) => p.exerciceId == exerciceId && p.type == ProjectType.normale)
+          .fold(0.0, (sum, p) => sum + p.budget);
+
+  // Budget disponible = budget réel (cotisations) - budget alloué aux projets normaux
+  double budgetDisponibleExercice(String exerciceId) =>
+      budgetExercice(exerciceId) - budgetAlloueExercice(exerciceId);
+
   double getProjectCommitted(String projetId) =>
       _cotisations
           .where((c) => c.projetId == projetId && c.type == CotisationType.dediee)

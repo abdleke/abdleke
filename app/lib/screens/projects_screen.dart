@@ -130,15 +130,15 @@ class _ProjectCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
-                              color: project.type == ProjectType.ponctuel ? AppTheme.primaryLight : AppTheme.infoLight,
+                              color: project.type == ProjectType.ponctuel ? AppTheme.primaryLight : AppTheme.successLight,
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              project.type == ProjectType.ponctuel ? s('projects.ponctuel') : s('projects.standard'),
+                              project.type == ProjectType.ponctuel ? s('projects.ponctuel') : s('projects.normale'),
                               style: GoogleFonts.cairo(
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
-                                color: project.type == ProjectType.ponctuel ? AppTheme.primary : AppTheme.info,
+                                color: project.type == ProjectType.ponctuel ? AppTheme.primary : AppTheme.success,
                               ),
                             ),
                           ),
@@ -220,22 +220,25 @@ class _ProjectFormState extends State<_ProjectForm> {
   String? _dateFin;
   double _budget = 0;
   double? _cotisationDediee;
-  ProjectType _type = ProjectType.standard;
+  ProjectType _type = ProjectType.normale;
   ProjectStatus _statut = ProjectStatus.actif;
+  String? _exerciceId;
 
   @override
   void initState() {
     super.initState();
     final p = widget.existing;
+    final prov = context.read<AppProvider>();
     _nom = p?.nom ?? '';
     _description = p?.description ?? '';
     _dateDebut = p?.dateDebut ?? DateTime.now().toIso8601String().split('T')[0];
     _dateFin = p?.dateFin;
     _budget = p?.budget ?? 0;
     _cotisationDediee = p?.cotisationDediee;
-    _type = p?.type ?? ProjectType.standard;
+    _type = p?.type ?? ProjectType.normale;
     _statut = p?.statut ?? ProjectStatus.actif;
     _responsableId = p?.responsableId ?? '';
+    _exerciceId = p?.exerciceId ?? prov.activeExercice?.id;
   }
 
   @override
@@ -281,10 +284,17 @@ class _ProjectFormState extends State<_ProjectForm> {
                           label: s('projects.type'),
                           value: _type,
                           items: [
-                            DropdownMenuItem(value: ProjectType.standard, child: Text(s('projects.standard'), style: GoogleFonts.cairo())),
+                            DropdownMenuItem(value: ProjectType.normale, child: Text(s('projects.normale'), style: GoogleFonts.cairo())),
                             DropdownMenuItem(value: ProjectType.ponctuel, child: Text(s('projects.ponctuel'), style: GoogleFonts.cairo())),
                           ],
-                          onChanged: (v) => setState(() => _type = v!),
+                          onChanged: (v) => setState(() {
+                            _type = v!;
+                            if (_type == ProjectType.normale) {
+                              _exerciceId = context.read<AppProvider>().activeExercice?.id;
+                            } else {
+                              _exerciceId = null;
+                            }
+                          }),
                         )),
                         const SizedBox(width: 12),
                         Expanded(child: _dropdown<ProjectStatus>(
@@ -336,6 +346,7 @@ class _ProjectFormState extends State<_ProjectForm> {
                               dateDebut: _dateDebut, dateFin: _dateFin,
                               statut: _statut, responsableId: _responsableId,
                               cotisationDediee: _type == ProjectType.ponctuel ? _cotisationDediee : null,
+                              exerciceId: _type == ProjectType.normale ? _exerciceId : null,
                             );
                             if (widget.existing != null) prov.updateProject(project); else prov.addProject(project);
                             Navigator.pop(ctx);
