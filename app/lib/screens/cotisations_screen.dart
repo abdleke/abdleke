@@ -62,6 +62,12 @@ class _CotisationsScreenState extends State<CotisationsScreen>
           ],
         ),
         actions: [
+          if (prov.exercices.length > 1 || prov.exercices.any((e) => e.statut == ExerciceStatus.cloture))
+            IconButton(
+              icon: const Icon(Icons.history_rounded),
+              tooltip: s('exercice.history'),
+              onPressed: () => _showHistory(context, prov, lang),
+            ),
           if (prov.canManageMembers())
             IconButton(
               icon: const Icon(Icons.calendar_month_rounded),
@@ -121,6 +127,16 @@ class _CotisationsScreenState extends State<CotisationsScreen>
       context: context,
       isScrollControlled: true,
       builder: (_) => _ExerciceForm(existing: existing, lang: lang),
+    );
+  }
+
+  void _showHistory(BuildContext context, AppProvider prov, String lang) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (_) => _ExerciceHistorySheet(prov: prov, lang: lang,
+          onEdit: (e) => _showExerciceForm(context, prov, lang, e)),
     );
   }
 }
@@ -863,6 +879,171 @@ class _CotisationFormState extends State<_CotisationForm> {
       ),
     );
   }
+}
+
+// ── Exercice History ──────────────────────────────────────────────────────────
+
+class _ExerciceHistorySheet extends StatelessWidget {
+  final AppProvider prov;
+  final String lang;
+  final void Function(ExerciceAnnuel) onEdit;
+
+  const _ExerciceHistorySheet({
+    required this.prov,
+    required this.lang,
+    required this.onEdit,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = (String k) => AppStrings.get(k, lang);
+    final sorted = [...prov.exercices]
+      ..sort((a, b) => b.dateDebut.compareTo(a.dateDebut));
+    final currency = prov.currency;
+
+    return DraggableScrollableSheet(
+      initialChildSize: 0.6,
+      maxChildSize: 0.92,
+      expand: false,
+      builder: (ctx, scroll) => Column(
+        children: [
+          Container(
+            width: 40, height: 4,
+            margin: const EdgeInsets.symmetric(vertical: 12),
+            decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Row(
+              children: [
+                Icon(Icons.history_rounded, color: AppTheme.primary, size: 22),
+                const SizedBox(width: 10),
+                Text(s('exercice.history'),
+                    style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.w700)),
+                const Spacer(),
+                Text('${sorted.length} ${s('exercice.total')}',
+                    style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textSecondary)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Expanded(
+            child: sorted.isEmpty
+                ? Center(child: Text(s('exercice.noActive'),
+                    style: GoogleFonts.cairo(color: AppTheme.textSecondary)))
+                : ListView.separated(
+                    controller: scroll,
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
+                    itemCount: sorted.length,
+                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    itemBuilder: (_, i) {
+                      final ex = sorted[i];
+                      final budgetReel = prov.budgetExercice(ex.id);
+                      final collecte = prov.collecteExercice(ex.id);
+                      final pct = budgetReel > 0 ? (collecte / budgetReel).clamp(0.0, 1.0) : 0.0;
+                      final isActive = ex.statut == ExerciceStatus.actif;
+
+                      return Container(
+                        padding: const EdgeInsets.all(14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: isActive ? AppTheme.primary.withValues(alpha: 0.4) : AppTheme.border,
+                            width: isActive ? 1.5 : 1,
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(ex.libelle,
+                                          style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w700)),
+                                      Text(ex.periode,
+                                          style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textSecondary)),
+                                    ],
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: isActive ? AppTheme.success.withValues(alpha: 0.1) : AppTheme.border.withValues(alpha: 0.5),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    isActive ? s('projects.active') : s('exercice.closed'),
+                                    style: GoogleFonts.cairo(
+                                        fontSize: 11, fontWeight: FontWeight.w600,
+                                        color: isActive ? AppTheme.success : AppTheme.textSecondary),
+                                  ),
+                                ),
+                                if (prov.canManageMembers()) ...[
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () { Navigator.pop(context); onEdit(ex); },
+                                    child: Icon(Icons.edit_rounded, size: 16, color: AppTheme.primary),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                _stat(s('exercice.budgetProvisoire'),
+                                    ex.budgetProvisoireTotal > 0
+                                        ? '${_fmt(ex.budgetProvisoireTotal)} $currency'
+                                        : '—',
+                                    AppTheme.textSecondary),
+                                const SizedBox(width: 16),
+                                _stat(s('exercice.budgetReel'),
+                                    '${_fmt(budgetReel)} $currency', AppTheme.primary),
+                                const SizedBox(width: 16),
+                                _stat(s('exercice.collected'),
+                                    '${_fmt(collecte)} $currency', AppTheme.success),
+                              ],
+                            ),
+                            if (budgetReel > 0) ...[
+                              const SizedBox(height: 8),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: pct,
+                                  minHeight: 6,
+                                  backgroundColor: AppTheme.primaryLight,
+                                  valueColor: AlwaysStoppedAnimation(
+                                      pct >= 1.0 ? AppTheme.success : AppTheme.primary),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text('${(pct * 100).toStringAsFixed(0)}% ${s('cotisations.totalCollected')}',
+                                  style: GoogleFonts.cairo(fontSize: 10, color: AppTheme.textSecondary)),
+                            ],
+                          ],
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _stat(String label, String value, Color color) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(label, style: GoogleFonts.cairo(fontSize: 9, color: AppTheme.textSecondary)),
+      Text(value, style: GoogleFonts.cairo(fontSize: 12, fontWeight: FontWeight.w700, color: color)),
+    ],
+  );
+
+  String _fmt(double v) => v.toStringAsFixed(0)
+      .replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},');
 }
 
 // ── Exercice Form ─────────────────────────────────────────────────────────────
