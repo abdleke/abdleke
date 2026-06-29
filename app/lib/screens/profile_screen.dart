@@ -124,7 +124,7 @@ class _LanguageSection extends StatelessWidget {
   final String lang;
   const _LanguageSection({required this.prov, required this.lang});
 
-  static const _currencies = ['MAD', 'DA', 'TND', 'EUR', 'USD'];
+  static const _currencies = ['درهم', 'دج', 'دينار', 'EUR', 'USD'];
 
   @override
   Widget build(BuildContext context) {

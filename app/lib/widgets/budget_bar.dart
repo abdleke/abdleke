@@ -10,7 +10,7 @@ class BudgetBar extends StatelessWidget {
     super.key,
     required this.spent,
     required this.budget,
-    this.currency = 'دج',
+    this.currency = 'درهم',
   });
 
   @override
