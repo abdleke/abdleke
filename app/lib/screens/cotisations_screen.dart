@@ -5,6 +5,7 @@ import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
 import '../models/cotisation.dart';
 import '../models/echeance.dart';
+import '../models/exercice_annuel.dart';
 import '../models/member.dart';
 import '../models/project.dart';
 import '../theme/app_theme.dart';
@@ -61,6 +62,12 @@ class _CotisationsScreenState extends State<CotisationsScreen>
           ],
         ),
         actions: [
+          if (prov.canManageMembers())
+            IconButton(
+              icon: const Icon(Icons.calendar_month_rounded),
+              tooltip: s('exercice.manage'),
+              onPressed: () => _showExerciceForm(context, prov, lang, exercice),
+            ),
           if (prov.canAddCotisation())
             IconButton(
               icon: const Icon(Icons.add_rounded),
@@ -71,9 +78,18 @@ class _CotisationsScreenState extends State<CotisationsScreen>
       ),
       body: Column(
         children: [
+          if (exercice == null && prov.canManageMembers())
+            _NoExerciceBanner(lang: lang, onTap: () => _showExerciceForm(context, prov, lang, null)),
           if (exercice != null)
-            _ExerciceHeader(prov: prov, exerciceId: exercice.id,
-                libelle: exercice.libelle, periode: exercice.periode, lang: lang),
+            _ExerciceHeader(
+              prov: prov,
+              exerciceId: exercice.id,
+              libelle: exercice.libelle,
+              periode: exercice.periode,
+              lang: lang,
+              canEdit: prov.canManageMembers(),
+              onEdit: () => _showExerciceForm(context, prov, lang, exercice),
+            ),
           Expanded(
             child: TabBarView(
               controller: _tab,
@@ -99,11 +115,62 @@ class _CotisationsScreenState extends State<CotisationsScreen>
       builder: (_) => _CotisationForm(lang: lang),
     );
   }
+
+  void _showExerciceForm(BuildContext context, AppProvider prov, String lang, ExerciceAnnuel? existing) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => _ExerciceForm(existing: existing, lang: lang),
+    );
+  }
+}
+
+class _NoExerciceBanner extends StatelessWidget {
+  final String lang;
+  final VoidCallback onTap;
+  const _NoExerciceBanner({required this.lang, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = (String k) => AppStrings.get(k, lang);
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppTheme.warningLight,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.warning.withValues(alpha: 0.4)),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: AppTheme.warning, size: 22),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(s('exercice.noActive'),
+                      style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.warning)),
+                  Text(s('exercice.createHint'),
+                      style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textSecondary)),
+                ],
+              ),
+            ),
+            Icon(Icons.add_circle_rounded, color: AppTheme.warning, size: 24),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ExerciceHeader extends StatelessWidget {
   final AppProvider prov;
   final String exerciceId, libelle, periode, lang;
+  final bool canEdit;
+  final VoidCallback? onEdit;
 
   const _ExerciceHeader({
     required this.prov,
@@ -111,6 +178,8 @@ class _ExerciceHeader extends StatelessWidget {
     required this.libelle,
     required this.periode,
     required this.lang,
+    this.canEdit = false,
+    this.onEdit,
   });
 
   @override
@@ -138,13 +207,27 @@ class _ExerciceHeader extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(libelle,
-                  style: GoogleFonts.cairo(
-                      color: Colors.white,
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700)),
-              Text(periode,
-                  style: GoogleFonts.cairo(color: Colors.white70, fontSize: 10)),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(libelle,
+                        style: GoogleFonts.cairo(
+                            color: Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700)),
+                    Text(periode,
+                        style: GoogleFonts.cairo(color: Colors.white70, fontSize: 10)),
+                  ],
+                ),
+              ),
+              if (canEdit)
+                IconButton(
+                  icon: const Icon(Icons.edit_rounded, color: Colors.white70, size: 18),
+                  onPressed: onEdit,
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
             ],
           ),
           const SizedBox(height: 12),
@@ -772,6 +855,193 @@ class _CotisationFormState extends State<_CotisationForm> {
                         style: GoogleFonts.cairo()),
                   ),
                 ),
+              ]),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ── Exercice Form ─────────────────────────────────────────────────────────────
+
+class _ExerciceForm extends StatefulWidget {
+  final ExerciceAnnuel? existing;
+  final String lang;
+  const _ExerciceForm({this.existing, required this.lang});
+
+  @override
+  State<_ExerciceForm> createState() => _ExerciceFormState();
+}
+
+class _ExerciceFormState extends State<_ExerciceForm> {
+  final _key = GlobalKey<FormState>();
+  late String _libelle, _dateDebut, _dateFin;
+  late double _budgetProvisoire;
+  late ExerciceStatus _statut;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.existing;
+    final now = DateTime.now();
+    _libelle = e?.libelle ?? 'Exercice ${now.year}';
+    _dateDebut = e?.dateDebut ?? '${now.year}-01-01';
+    _dateFin = e?.dateFin ?? '${now.year}-12-31';
+    _budgetProvisoire = e?.budgetProvisoireTotal ?? 0;
+    _statut = e?.statut ?? ExerciceStatus.actif;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prov = context.read<AppProvider>();
+    final lang = widget.lang;
+    final s = (String k) => AppStrings.get(k, lang);
+    final isNew = widget.existing == null;
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Form(
+          key: _key,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2)),
+              ),
+              Row(
+                children: [
+                  Icon(Icons.calendar_month_rounded, color: AppTheme.primary, size: 22),
+                  const SizedBox(width: 10),
+                  Text(
+                    isNew ? s('exercice.create') : s('exercice.edit'),
+                    style: GoogleFonts.cairo(fontSize: 18, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Libellé
+              TextFormField(
+                initialValue: _libelle,
+                decoration: InputDecoration(
+                  labelText: s('exercice.label'),
+                  labelStyle: GoogleFonts.cairo(),
+                  prefixIcon: const Icon(Icons.label_outline_rounded, size: 18),
+                ),
+                style: GoogleFonts.cairo(),
+                validator: (v) => (v == null || v.isEmpty) ? '⚠' : null,
+                onSaved: (v) => _libelle = v ?? '',
+              ),
+              const SizedBox(height: 12),
+
+              // Dates
+              Row(children: [
+                Expanded(child: TextFormField(
+                  initialValue: _dateDebut,
+                  decoration: InputDecoration(
+                    labelText: s('projects.startDate'),
+                    labelStyle: GoogleFonts.cairo(),
+                    hintText: 'AAAA-MM-JJ',
+                    hintStyle: GoogleFonts.cairo(color: AppTheme.border),
+                    prefixIcon: const Icon(Icons.date_range_rounded, size: 18),
+                  ),
+                  style: GoogleFonts.cairo(),
+                  keyboardType: TextInputType.datetime,
+                  validator: (v) => (v == null || v.isEmpty) ? '⚠' : null,
+                  onSaved: (v) => _dateDebut = v ?? '',
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: TextFormField(
+                  initialValue: _dateFin,
+                  decoration: InputDecoration(
+                    labelText: s('projects.endDate'),
+                    labelStyle: GoogleFonts.cairo(),
+                    hintText: 'AAAA-MM-JJ',
+                    hintStyle: GoogleFonts.cairo(color: AppTheme.border),
+                    prefixIcon: const Icon(Icons.event_rounded, size: 18),
+                  ),
+                  style: GoogleFonts.cairo(),
+                  keyboardType: TextInputType.datetime,
+                  validator: (v) => (v == null || v.isEmpty) ? '⚠' : null,
+                  onSaved: (v) => _dateFin = v ?? '',
+                )),
+              ]),
+              const SizedBox(height: 12),
+
+              // Budget prévisionnel
+              TextFormField(
+                initialValue: _budgetProvisoire > 0 ? _budgetProvisoire.toStringAsFixed(0) : '',
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  labelText: s('exercice.budgetProvisoire'),
+                  labelStyle: GoogleFonts.cairo(),
+                  prefixIcon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
+                  suffixText: prov.currency,
+                  suffixStyle: GoogleFonts.cairo(color: AppTheme.primary, fontWeight: FontWeight.w700),
+                  helperText: s('exercice.budgetProvisoireHint'),
+                  helperStyle: GoogleFonts.cairo(fontSize: 11),
+                ),
+                style: GoogleFonts.cairo(),
+                onSaved: (v) => _budgetProvisoire = double.tryParse(v ?? '0') ?? 0,
+              ),
+              const SizedBox(height: 12),
+
+              // Statut (si édition)
+              if (!isNew)
+                DropdownButtonFormField<ExerciceStatus>(
+                  value: _statut,
+                  decoration: InputDecoration(
+                    labelText: s('projects.status'),
+                    labelStyle: GoogleFonts.cairo(),
+                    prefixIcon: const Icon(Icons.toggle_on_rounded, size: 18),
+                  ),
+                  items: [
+                    DropdownMenuItem(value: ExerciceStatus.actif,
+                        child: Text(s('projects.active'), style: GoogleFonts.cairo())),
+                    DropdownMenuItem(value: ExerciceStatus.cloture,
+                        child: Text(s('exercice.closed'), style: GoogleFonts.cairo())),
+                  ],
+                  onChanged: (v) => setState(() => _statut = v!),
+                  style: GoogleFonts.cairo(color: AppTheme.textPrimary),
+                ),
+
+              const SizedBox(height: 20),
+              Row(children: [
+                Expanded(child: OutlinedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(s('common.cancel'), style: GoogleFonts.cairo()),
+                )),
+                const SizedBox(width: 12),
+                Expanded(child: ElevatedButton(
+                  onPressed: () {
+                    if (_key.currentState?.validate() != true) return;
+                    _key.currentState?.save();
+                    final exercice = ExerciceAnnuel(
+                      id: widget.existing?.id ?? prov.newId(),
+                      libelle: _libelle,
+                      annee: int.tryParse(_dateDebut.split('-').first) ?? DateTime.now().year,
+                      moisDebut: int.tryParse(_dateDebut.split('-')[1]) ?? 1,
+                      dateDebut: _dateDebut,
+                      dateFin: _dateFin,
+                      statut: _statut,
+                      budgetProvisoireTotal: _budgetProvisoire,
+                    );
+                    if (widget.existing != null) {
+                      prov.updateExercice(exercice);
+                    } else {
+                      prov.addExercice(exercice);
+                    }
+                    Navigator.pop(context);
+                  },
+                  child: Text(s('common.save'), style: GoogleFonts.cairo()),
+                )),
               ]),
               const SizedBox(height: 8),
             ],
