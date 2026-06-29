@@ -26,19 +26,19 @@ class Cotisation {
   });
 
   factory Cotisation.fromJson(Map<String, dynamic> json) => Cotisation(
-        id: json['id'] as String,
-        membreId: json['membreId'] as String,
-        exerciceId: json['exerciceId'] as String? ?? '',
-        annee: json['annee'] as int? ?? DateTime.now().year,
-        montantTotal: ((json['montantTotal'] ?? json['montant'] ?? 0) as num).toDouble(),
-        nombreEcheances: json['nombreEcheances'] as int? ?? 1,
-        dateDebut: json['dateDebut'] as String? ?? '',
+        id: (json['id'] ?? '').toString(),
+        membreId: (json['membreId'] ?? json['membre_id'] ?? '').toString(),
+        exerciceId: (json['exerciceId'] ?? json['exercice_id'] ?? '').toString(),
+        annee: (json['annee'] as num?)?.toInt() ?? DateTime.now().year,
+        montantTotal: ((json['montantTotal'] ?? json['montant_total'] ?? json['montant'] ?? 0) as num).toDouble(),
+        nombreEcheances: (json['nombreEcheances'] ?? json['nombre_echeances'] as num?)?.toInt() ?? 1,
+        dateDebut: (json['dateDebut'] ?? json['date_debut'] ?? '').toString(),
         type: CotisationType.values.firstWhere(
-          (e) => e.name == json['type'],
+          (e) => e.name == (json['type'] ?? ''),
           orElse: () => CotisationType.normale,
         ),
-        projetId: json['projetId'] as String?,
-        commentaire: json['commentaire'] as String?,
+        projetId: (json['projetId'] ?? json['projet_id'])?.toString(),
+        commentaire: json['commentaire']?.toString(),
       );
 
   Map<String, dynamic> toJson() => {

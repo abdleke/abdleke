@@ -20,13 +20,13 @@ class Echeance {
   });
 
   factory Echeance.fromJson(Map<String, dynamic> json) => Echeance(
-        id: json['id'] as String,
-        cotisationId: json['cotisationId'] as String,
-        numero: json['numero'] as int,
-        montant: (json['montant'] as num).toDouble(),
-        dateEcheance: json['dateEcheance'] as String,
-        datePaiement: json['datePaiement'] as String?,
-        statut: _statusFromString(json['statut'] as String? ?? 'en_attente'),
+        id: (json['id'] ?? '').toString(),
+        cotisationId: (json['cotisationId'] ?? json['cotisation_id'] ?? '').toString(),
+        numero: (json['numero'] as num?)?.toInt() ?? 1,
+        montant: ((json['montant'] ?? 0) as num).toDouble(),
+        dateEcheance: (json['dateEcheance'] ?? json['date_echeance'] ?? '').toString(),
+        datePaiement: (json['datePaiement'] ?? json['date_paiement'])?.toString(),
+        statut: _statusFromString((json['statut'] ?? 'en_attente').toString()),
       );
 
   Map<String, dynamic> toJson() => {

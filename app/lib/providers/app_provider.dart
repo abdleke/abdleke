@@ -62,6 +62,18 @@ class AppProvider extends ChangeNotifier {
     await _initWithSupabase(prefs);
   }
 
+  List<T> _parseList<T>(List<Map<String, dynamic>> rows, T Function(Map<String, dynamic>) fromJson) {
+    final result = <T>[];
+    for (final row in rows) {
+      try {
+        result.add(fromJson(row));
+      } catch (e) {
+        debugPrint('[Jamiyati] Erreur parsing ligne: $e — $row');
+      }
+    }
+    return result;
+  }
+
   Future<List<Map<String, dynamic>>> _safeSelect(String table) async {
     try {
       final data = await _db.from(table).select();
@@ -114,11 +126,11 @@ class AppProvider extends ChangeNotifier {
       _initStatus = 'Aucun membre chargé — vérifier Supabase';
     }
 
-    _projects    = results[1].map((e) => Project.fromJson(e)).toList();
-    _depenses    = results[2].map((e) => Depense.fromJson(e)).toList();
-    _cotisations = results[3].map((e) => Cotisation.fromJson(e)).toList();
-    _exercices   = results[4].map((e) => ExerciceAnnuel.fromJson(e)).toList();
-    _echeances   = results[5].map((e) => Echeance.fromJson(e)).toList();
+    _projects    = _parseList(results[1], Project.fromJson);
+    _depenses    = _parseList(results[2], Depense.fromJson);
+    _cotisations = _parseList(results[3], Cotisation.fromJson);
+    _exercices   = _parseList(results[4], ExerciceAnnuel.fromJson);
+    _echeances   = _parseList(results[5], Echeance.fromJson);
 
     _setupStreams();
     _restoreSession(prefs);
@@ -130,22 +142,22 @@ class AppProvider extends ChangeNotifier {
     _cotisationsSub?.cancel(); _exercicesSub?.cancel(); _echeancesSub?.cancel();
 
     _membersSub = _db.from('members').stream(primaryKey: ['id']).listen((data) {
-      _members = data.map((e) => Member.fromJson(e)).toList(); notifyListeners();
+      _members = _parseList(data, Member.fromJson); notifyListeners();
     });
     _projectsSub = _db.from('projects').stream(primaryKey: ['id']).listen((data) {
-      _projects = data.map((e) => Project.fromJson(e)).toList(); notifyListeners();
+      _projects = _parseList(data, Project.fromJson); notifyListeners();
     });
     _depensesSub = _db.from('depenses').stream(primaryKey: ['id']).listen((data) {
-      _depenses = data.map((e) => Depense.fromJson(e)).toList(); notifyListeners();
+      _depenses = _parseList(data, Depense.fromJson); notifyListeners();
     });
     _cotisationsSub = _db.from('cotisations').stream(primaryKey: ['id']).listen((data) {
-      _cotisations = data.map((e) => Cotisation.fromJson(e)).toList(); notifyListeners();
+      _cotisations = _parseList(data, Cotisation.fromJson); notifyListeners();
     });
     _exercicesSub = _db.from('exercices').stream(primaryKey: ['id']).listen((data) {
-      _exercices = data.map((e) => ExerciceAnnuel.fromJson(e)).toList(); notifyListeners();
+      _exercices = _parseList(data, ExerciceAnnuel.fromJson); notifyListeners();
     });
     _echeancesSub = _db.from('echeances').stream(primaryKey: ['id']).listen((data) {
-      _echeances = data.map((e) => Echeance.fromJson(e)).toList(); notifyListeners();
+      _echeances = _parseList(data, Echeance.fromJson); notifyListeners();
     });
   }
 
