@@ -20,7 +20,7 @@ class AppProvider extends ChangeNotifier {
   List<Echeance> _echeances = [];
   String _currentUserId = '';
   String _language = 'ar';
-  String _currency = 'MAD';
+  String _currency = 'درهم';
   bool _isLoggedIn = false;
   String _initStatus = 'initialisation...';
 
@@ -58,7 +58,7 @@ class AppProvider extends ChangeNotifier {
   Future<void> init() async {
     final prefs = await SharedPreferences.getInstance();
     _language = prefs.getString('jamiyati_lang') ?? 'ar';
-    _currency = prefs.getString('jamiyati_currency') ?? 'MAD';
+    _currency = prefs.getString('jamiyati_currency') ?? 'درهم';
     await _initWithSupabase(prefs);
   }
 
