@@ -23,8 +23,11 @@ class AppProvider extends ChangeNotifier {
   String _currency = 'درهم';
   bool _isLoggedIn = false;
   String _initStatus = 'initialisation...';
+  String? _lastSaveError;
 
   String get initStatus => _initStatus;
+  String? get lastSaveError => _lastSaveError;
+  void clearLastSaveError() { _lastSaveError = null; }
 
   // Diagnostic: raw row counts from Supabase (before parsing)
   int _rawCotisationsCount = -1; // -1 = not yet fetched
@@ -487,13 +490,21 @@ class AppProvider extends ChangeNotifier {
 
   // ── Cotisations (engagements) ──────────────────────────────────
 
-  void addCotisation(Cotisation c) {
+  Future<bool> addCotisation(Cotisation c) async {
     final echeancesNouv = _generateEcheances(c);
     _cotisations = [..._cotisations, c];
     _echeances = [..._echeances, ...echeancesNouv];
     notifyListeners();
-    _upsert('cotisations', c.toJson());
-    for (final e in echeancesNouv) { _upsert('echeances', e.toJson()); }
+    final ok = await _upsert('cotisations', c.toJson());
+    if (!ok) {
+      // Rollback local state on failure
+      _cotisations = _cotisations.where((x) => x.id != c.id).toList();
+      _echeances = _echeances.where((e) => e.cotisationId != c.id).toList();
+      notifyListeners();
+      return false;
+    }
+    for (final e in echeancesNouv) { await _upsert('echeances', e.toJson()); }
+    return true;
   }
 
   void updateCotisation(Cotisation c) {
@@ -554,9 +565,17 @@ class AppProvider extends ChangeNotifier {
 
   // ── Storage ────────────────────────────────────────────────────
 
-  void _upsert(String table, Map<String, dynamic> data) {
-    _db.from(table).upsert(data).catchError(
-      (e) => debugPrint('[Jamiyati] upsert error ($table): $e'));
+  Future<bool> _upsert(String table, Map<String, dynamic> data) async {
+    try {
+      await _db.from(table).upsert(data);
+      return true;
+    } catch (e) {
+      final msg = e.toString();
+      _lastSaveError = 'Erreur $table: ${msg.length > 300 ? msg.substring(0, 300) : msg}';
+      debugPrint('[Jamiyati] upsert error ($table): $e\nData keys: ${data.keys.toList()}');
+      notifyListeners();
+      return false;
+    }
   }
 
   void _remove(String table, String id) {

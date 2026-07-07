@@ -884,11 +884,11 @@ class _CotisationFormState extends State<_CotisationForm> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: ElevatedButton(
-                    onPressed: () {
+                    onPressed: () async {
                       if (_key.currentState?.validate() != true) return;
                       _key.currentState?.save();
                       final exercice = prov.activeExercice;
-                      prov.addCotisation(Cotisation(
+                      final ok = await prov.addCotisation(Cotisation(
                         id: prov.newId(),
                         membreId: _membreId,
                         exerciceId: exercice?.id ?? '',
@@ -900,6 +900,19 @@ class _CotisationFormState extends State<_CotisationForm> {
                         projetId:
                             _type == CotisationType.dediee ? _projetId : null,
                       ));
+                      if (!context.mounted) return;
+                      if (!ok) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(
+                            prov.lastSaveError ?? 'Erreur lors de la sauvegarde',
+                            style: GoogleFonts.cairo(),
+                          ),
+                          backgroundColor: Colors.red[700],
+                          duration: const Duration(seconds: 8),
+                        ));
+                        prov.clearLastSaveError();
+                        return;
+                      }
                       Navigator.pop(context);
                     },
                     child: Text(s('common.save'),
