@@ -517,6 +517,36 @@ class _CotisationCardState extends State<_CotisationCard> {
   }
 }
 
+void _confirmValidate(BuildContext context, Echeance e, String Function(String) s) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: Row(children: [
+        Icon(Icons.check_circle_rounded, color: AppTheme.success, size: 22),
+        const SizedBox(width: 8),
+        Text(s('echeance.validate'), style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+      ]),
+      content: Text(
+        '${e.montant.toStringAsFixed(0)} — ${e.dateEcheance}',
+        style: GoogleFonts.cairo(),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(ctx),
+            child: Text(s('common.cancel'), style: GoogleFonts.cairo())),
+        ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
+          onPressed: () {
+            context.read<AppProvider>().validateEcheance(e.id);
+            Navigator.pop(ctx);
+          },
+          child: Text(s('common.confirm'), style: GoogleFonts.cairo()),
+        ),
+      ],
+    ),
+  );
+}
+
 class _EcheanceRow extends StatelessWidget {
   final Echeance echeance;
   final String lang, currency;
@@ -626,8 +656,7 @@ class _EcheanceRow extends StatelessWidget {
                   const SizedBox(width: 8),
                 Expanded(
                   child: ElevatedButton.icon(
-                    onPressed: () =>
-                        context.read<AppProvider>().validateEcheance(e.id),
+                    onPressed: () => _confirmValidate(context, e, s),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppTheme.success,
                       padding: const EdgeInsets.symmetric(vertical: 4),

@@ -12,6 +12,8 @@ class Depense {
   final DepenseCategorie categorie;
   final DepenseStatus statut;
   final String? commentaire;
+  final bool isAvance;
+  final bool rembourse;
 
   const Depense({
     required this.id,
@@ -23,15 +25,17 @@ class Depense {
     required this.categorie,
     required this.statut,
     this.commentaire,
+    this.isAvance = false,
+    this.rembourse = false,
   });
 
   factory Depense.fromJson(Map<String, dynamic> json) => Depense(
-        id: json['id'] as String,
-        projetId: json['projetId'] as String,
-        membreId: json['membreId'] as String,
-        description: json['description'] as String,
-        montant: (json['montant'] as num).toDouble(),
-        date: json['date'] as String,
+        id: (json['id'] ?? '').toString(),
+        projetId: (json['projetId'] ?? json['projet_id'] ?? '').toString(),
+        membreId: (json['membreId'] ?? json['membre_id'] ?? '').toString(),
+        description: (json['description'] ?? '').toString(),
+        montant: ((json['montant'] ?? 0) as num).toDouble(),
+        date: (json['date'] ?? '').toString(),
         categorie: DepenseCategorie.values.firstWhere(
           (e) => e.name == json['categorie'],
           orElse: () => DepenseCategorie.autre,
@@ -40,7 +44,9 @@ class Depense {
           (e) => e.name == json['statut'],
           orElse: () => DepenseStatus.soumise,
         ),
-        commentaire: json['commentaire'] as String?,
+        commentaire: json['commentaire']?.toString(),
+        isAvance: (json['isAvance'] ?? json['is_avance'] ?? false) == true,
+        rembourse: (json['rembourse'] ?? false) == true,
       );
 
   Map<String, dynamic> toJson() => {
@@ -53,6 +59,8 @@ class Depense {
         'categorie': categorie.name,
         'statut': statut.name,
         'commentaire': commentaire,
+        'isAvance': isAvance,
+        'rembourse': rembourse,
       };
 
   Depense copyWith({
@@ -65,6 +73,8 @@ class Depense {
     DepenseCategorie? categorie,
     DepenseStatus? statut,
     String? commentaire,
+    bool? isAvance,
+    bool? rembourse,
   }) =>
       Depense(
         id: id ?? this.id,
@@ -76,5 +86,7 @@ class Depense {
         categorie: categorie ?? this.categorie,
         statut: statut ?? this.statut,
         commentaire: commentaire ?? this.commentaire,
+        isAvance: isAvance ?? this.isAvance,
+        rembourse: rembourse ?? this.rembourse,
       );
 }

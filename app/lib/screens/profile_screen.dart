@@ -7,6 +7,7 @@ import '../models/member.dart';
 import '../theme/app_theme.dart';
 import '../widgets/member_avatar.dart';
 import 'members_screen.dart';
+import 'avances_screen.dart';
 
 class ProfileScreen extends StatelessWidget {
   const ProfileScreen({super.key});
@@ -41,6 +42,10 @@ class ProfileScreen extends StatelessWidget {
           _LanguageSection(prov: prov, lang: lang),
           const SizedBox(height: 16),
           _PasswordSection(user: user, lang: lang),
+          if (prov.canValidateCotisation() && !prov.canManageMembers()) ...[
+            const SizedBox(height: 16),
+            _TresorierSection(lang: lang),
+          ],
           if (prov.canManageMembers()) ...[
             const SizedBox(height: 16),
             _AdminSection(prov: prov, lang: lang),
@@ -300,6 +305,12 @@ class _AdminSection extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         OutlinedButton.icon(
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AvancesScreen())),
+          icon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
+          label: Text(s('avances.title'), style: GoogleFonts.cairo()),
+        ),
+        const SizedBox(height: 8),
+        OutlinedButton.icon(
           onPressed: () => _confirmReset(context, prov, lang),
           style: OutlinedButton.styleFrom(
             foregroundColor: AppTheme.danger,
@@ -331,6 +342,33 @@ class _AdminSection extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TresorierSection extends StatelessWidget {
+  final String lang;
+  const _TresorierSection({required this.lang});
+
+  @override
+  Widget build(BuildContext context) {
+    final s = (String k) => AppStrings.get(k, lang);
+    return _Card(
+      children: [
+        Row(
+          children: [
+            Icon(Icons.account_balance_wallet_rounded, size: 18, color: AppTheme.primary),
+            const SizedBox(width: 10),
+            Text(s('avances.title'), style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+          ],
+        ),
+        const SizedBox(height: 12),
+        OutlinedButton.icon(
+          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const AvancesScreen())),
+          icon: const Icon(Icons.account_balance_wallet_rounded, size: 18),
+          label: Text(s('avances.title'), style: GoogleFonts.cairo()),
+        ),
+      ],
     );
   }
 }

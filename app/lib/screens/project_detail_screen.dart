@@ -248,7 +248,7 @@ class _ExpensesList extends StatelessWidget {
                     )),
                     const SizedBox(width: 8),
                     Expanded(child: ElevatedButton.icon(
-                      onPressed: () { context.read<AppProvider>().approveDepense(d.id); },
+                      onPressed: () => _confirmApprove(ctx, d),
                       style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
                       icon: const Icon(Icons.check_rounded, size: 16),
                       label: Text(s('expenses.approve'), style: GoogleFonts.cairo(fontSize: 12)),
@@ -260,6 +260,26 @@ class _ExpensesList extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  void _confirmApprove(BuildContext context, Depense d) {
+    final s = (String k) => AppStrings.get(k, lang);
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(s('expenses.approve'), style: GoogleFonts.cairo(fontWeight: FontWeight.w700)),
+        content: Text('${d.description}\n${d.montant.toStringAsFixed(0)} ${context.read<AppProvider>().currency}',
+            style: GoogleFonts.cairo()),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(s('common.cancel'), style: GoogleFonts.cairo())),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success),
+            onPressed: () { context.read<AppProvider>().approveDepense(d.id); Navigator.pop(ctx); },
+            child: Text(s('expenses.approve'), style: GoogleFonts.cairo()),
+          ),
+        ],
+      ),
     );
   }
 
@@ -306,6 +326,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
   late String _desc, _date, _membreId;
   double _montant = 0;
   DepenseCategorie _cat = DepenseCategorie.materiel;
+  bool _isAvance = false;
 
   @override
   void initState() {
@@ -315,6 +336,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
     _date = e?.date ?? DateTime.now().toIso8601String().split('T')[0];
     _montant = e?.montant ?? 0;
     _cat = e?.categorie ?? DepenseCategorie.materiel;
+    _isAvance = e?.isAvance ?? false;
     final prov = context.read<AppProvider>();
     final user = prov.currentUser;
     if (e != null) {
@@ -378,6 +400,58 @@ class _ExpenseFormState extends State<_ExpenseForm> {
                 onChanged: (v) => setState(() => _cat = v!),
                 style: GoogleFonts.cairo(color: AppTheme.textPrimary),
               ),
+              const SizedBox(height: 12),
+              // Source de financement
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppTheme.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.border),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(s('expenses.source'), style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600, color: AppTheme.textSecondary)),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _sourceBtn(
+                            label: s('expenses.fondAssociation'),
+                            icon: Icons.account_balance_rounded,
+                            selected: !_isAvance,
+                            onTap: () => setState(() => _isAvance = false),
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _sourceBtn(
+                            label: s('expenses.avanceMembre'),
+                            icon: Icons.person_pin_circle_rounded,
+                            selected: _isAvance,
+                            onTap: () => setState(() => _isAvance = true),
+                            color: AppTheme.warning,
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (_isAvance)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 6),
+                        child: Row(
+                          children: [
+                            Icon(Icons.info_outline_rounded, size: 13, color: AppTheme.warning),
+                            const SizedBox(width: 4),
+                            Expanded(child: Text(s('expenses.avanceHint'),
+                                style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.warning))),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               const SizedBox(height: 20),
               Row(children: [
                 Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context), child: Text(s('common.cancel'), style: GoogleFonts.cairo()))),
@@ -391,6 +465,7 @@ class _ExpenseFormState extends State<_ExpenseForm> {
                       membreId: _membreId, description: _desc,
                       montant: _montant, date: _date,
                       categorie: _cat, statut: DepenseStatus.soumise,
+                      isAvance: _isAvance,
                     ));
                     Navigator.pop(context);
                   },
@@ -400,6 +475,30 @@ class _ExpenseFormState extends State<_ExpenseForm> {
               const SizedBox(height: 8),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _sourceBtn({required String label, required IconData icon, required bool selected, required VoidCallback onTap, required Color color}) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+        decoration: BoxDecoration(
+          color: selected ? color.withValues(alpha: 0.1) : Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: selected ? color : AppTheme.border, width: selected ? 1.5 : 1),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: selected ? color : AppTheme.textSecondary, size: 22),
+            const SizedBox(height: 4),
+            Text(label, textAlign: TextAlign.center,
+                style: GoogleFonts.cairo(fontSize: 11, fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
+                    color: selected ? color : AppTheme.textSecondary)),
+          ],
         ),
       ),
     );

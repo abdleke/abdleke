@@ -442,6 +442,9 @@ class AppProvider extends ChangeNotifier {
   void rejectDepense(String id, String reason) =>
       _updateDepense(id, (d) => d.copyWith(statut: DepenseStatus.rejetee, commentaire: reason));
 
+  void marquerRembourse(String id) =>
+      _updateDepense(id, (d) => d.copyWith(rembourse: true));
+
   void deleteDepense(String id) {
     _depenses = _depenses.where((d) => d.id != id).toList();
     notifyListeners(); _remove('depenses', id);

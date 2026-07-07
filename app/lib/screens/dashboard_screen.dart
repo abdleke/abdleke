@@ -443,7 +443,7 @@ class _LangButton extends StatelessWidget {
       icon: const Icon(Icons.language_rounded, color: Colors.white),
       onSelected: prov.setLanguage,
       itemBuilder: (_) => [
-        const PopupMenuItem(value: 'ar', child: Text('🇩🇿 العربية')),
+        const PopupMenuItem(value: 'ar', child: Text('🇲🇦 العربية')),
         const PopupMenuItem(value: 'fr', child: Text('🇫🇷 Français')),
         const PopupMenuItem(value: 'en', child: Text('🇬🇧 English')),
       ],
