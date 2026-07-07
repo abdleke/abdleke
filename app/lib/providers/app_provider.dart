@@ -195,19 +195,19 @@ class AppProvider extends ChangeNotifier {
   }
 
   Future<void> resetData() async {
-    _initEmpty();
-    _currentUserId = '';
-    _isLoggedIn = false;
+    // Keep members and projects, only clear financial data
+    _depenses = [];
+    _cotisations = [];
+    _exercices = [];
+    _echeances = [];
     notifyListeners();
     try {
-      for (final table in ['echeances', 'cotisations', 'depenses', 'exercices', 'projects', 'members']) {
+      for (final table in ['echeances', 'cotisations', 'depenses', 'exercices']) {
         await _db.from(table).delete().neq('id', '__purge__');
       }
-      await _db.from('members').insert(_members.first.toJson());
     } catch (e) {
       debugPrint('[Jamiyati] Erreur purge Supabase: $e');
     }
-    await _persistAuth();
   }
 
   void _restoreSession(SharedPreferences prefs) {
