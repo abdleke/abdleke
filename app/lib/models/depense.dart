@@ -29,12 +29,18 @@ class Depense {
     this.rembourse = false,
   });
 
+  static double _d(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
   factory Depense.fromJson(Map<String, dynamic> json) => Depense(
         id: (json['id'] ?? '').toString(),
         projetId: (json['projetId'] ?? json['projet_id'] ?? '').toString(),
         membreId: (json['membreId'] ?? json['membre_id'] ?? '').toString(),
         description: (json['description'] ?? '').toString(),
-        montant: ((json['montant'] ?? 0) as num).toDouble(),
+        montant: _d(json['montant']),
         date: (json['date'] ?? '').toString(),
         categorie: DepenseCategorie.values.firstWhere(
           (e) => e.name == json['categorie'],

@@ -29,23 +29,29 @@ class Project {
     this.exerciceId,
   });
 
+  static double _d(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
   factory Project.fromJson(Map<String, dynamic> json) => Project(
-        id: json['id'] as String,
-        nom: json['nom'] as String,
-        description: json['description'] as String,
-        type: _typeFromString(json['type'] as String? ?? 'normale'),
-        budget: (json['budget'] as num).toDouble(),
-        dateDebut: json['dateDebut'] as String,
-        dateFin: json['dateFin'] as String?,
+        id: (json['id'] ?? '').toString(),
+        nom: (json['nom'] ?? '').toString(),
+        description: (json['description'] ?? '').toString(),
+        type: _typeFromString((json['type'] ?? 'normale').toString()),
+        budget: _d(json['budget']),
+        dateDebut: (json['dateDebut'] ?? json['date_debut'] ?? '').toString(),
+        dateFin: (json['dateFin'] ?? json['date_fin'])?.toString(),
         statut: ProjectStatus.values.firstWhere(
-          (e) => e.name == json['statut'],
+          (e) => e.name == (json['statut'] ?? '').toString(),
           orElse: () => ProjectStatus.actif,
         ),
-        responsableId: json['responsableId'] as String,
-        cotisationDediee: json['cotisationDediee'] != null
-            ? (json['cotisationDediee'] as num).toDouble()
+        responsableId: (json['responsableId'] ?? json['responsable_id'] ?? '').toString(),
+        cotisationDediee: json['cotisationDediee'] ?? json['cotisation_dediee'] != null
+            ? _d(json['cotisationDediee'] ?? json['cotisation_dediee'])
             : null,
-        exerciceId: json['exerciceId'] as String?,
+        exerciceId: (json['exerciceId'] ?? json['exercice_id'])?.toString(),
       );
 
   Map<String, dynamic> toJson() => {

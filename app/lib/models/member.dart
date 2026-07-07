@@ -35,18 +35,18 @@ class Member {
       (telephone?.isNotEmpty == true) ? telephone! : (email?.isNotEmpty == true ? email! : id);
 
   factory Member.fromJson(Map<String, dynamic> json) => Member(
-        id: json['id'] as String,
-        prenom: json['prenom'] as String,
-        nom: json['nom'] as String,
-        email: json['email'] as String?,
-        telephone: json['telephone'] as String?,
-        dateAdhesion: json['dateAdhesion'] as String? ?? '',
+        id: (json['id'] ?? '').toString(),
+        prenom: (json['prenom'] ?? '').toString(),
+        nom: (json['nom'] ?? '').toString(),
+        email: (json['email'])?.toString(),
+        telephone: (json['telephone'])?.toString(),
+        dateAdhesion: (json['dateAdhesion'] ?? json['date_adhesion'] ?? '').toString(),
         statut: MemberStatus.values.firstWhere(
-          (e) => e.name == json['statut'],
+          (e) => e.name == (json['statut'] ?? '').toString(),
           orElse: () => MemberStatus.actif,
         ),
-        role: _roleFromString(json['role'] as String),
-        motDePasse: json['motDePasse'] as String? ?? '1234',
+        role: _roleFromString((json['role'] ?? 'membre').toString()),
+        motDePasse: (json['motDePasse'] ?? json['mot_de_passe'] ?? '1234').toString(),
       );
 
   Map<String, dynamic> toJson() => {
