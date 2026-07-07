@@ -26,6 +26,10 @@ class AppProvider extends ChangeNotifier {
 
   String get initStatus => _initStatus;
 
+  // Diagnostic: raw row counts from Supabase (before parsing)
+  int _rawCotisationsCount = -1; // -1 = not yet fetched
+  int get rawCotisationsCount => _rawCotisationsCount;
+
   StreamSubscription<List<Map<String, dynamic>>>? _membersSub;
   StreamSubscription<List<Map<String, dynamic>>>? _projectsSub;
   StreamSubscription<List<Map<String, dynamic>>>? _depensesSub;
@@ -128,7 +132,12 @@ class AppProvider extends ChangeNotifier {
 
     _projects    = _parseList(results[1], Project.fromJson);
     _depenses    = _parseList(results[2], Depense.fromJson);
+    _rawCotisationsCount = results[3].length;
     _cotisations = _parseList(results[3], Cotisation.fromJson);
+    debugPrint('[Jamiyati] cotisations: $_rawCotisationsCount raw rows → ${_cotisations.length} parsed');
+    if (results[3].isNotEmpty && _cotisations.isEmpty) {
+      debugPrint('[Jamiyati] PREMIERE LIGNE COTISATION: ${results[3].first}');
+    }
     _exercices   = _parseList(results[4], ExerciceAnnuel.fromJson);
     _echeances   = _parseList(results[5], Echeance.fromJson);
 
@@ -151,7 +160,10 @@ class AppProvider extends ChangeNotifier {
       _depenses = _parseList(data, Depense.fromJson); notifyListeners();
     });
     _cotisationsSub = _db.from('cotisations').stream(primaryKey: ['id']).listen((data) {
-      _cotisations = _parseList(data, Cotisation.fromJson); notifyListeners();
+      _rawCotisationsCount = data.length;
+      _cotisations = _parseList(data, Cotisation.fromJson);
+      debugPrint('[Jamiyati] cotisations stream: ${data.length} raw → ${_cotisations.length} parsed');
+      notifyListeners();
     });
     _exercicesSub = _db.from('exercices').stream(primaryKey: ['id']).listen((data) {
       _exercices = _parseList(data, ExerciceAnnuel.fromJson); notifyListeners();

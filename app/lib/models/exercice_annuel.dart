@@ -21,18 +21,30 @@ class ExerciceAnnuel {
     this.budgetProvisoireTotal = 0,
   });
 
+  static int _i(dynamic v, [int fallback = 0]) {
+    if (v == null) return fallback;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString()) ?? fallback;
+  }
+
+  static double _d(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
   factory ExerciceAnnuel.fromJson(Map<String, dynamic> json) => ExerciceAnnuel(
-        id: json['id'] as String,
-        libelle: json['libelle'] as String,
-        annee: json['annee'] as int,
-        moisDebut: json['moisDebut'] as int? ?? 1,
-        dateDebut: json['dateDebut'] as String,
-        dateFin: json['dateFin'] as String,
-        statut: (json['statut'] as String?) == 'cloture'
+        id: (json['id'] ?? '').toString(),
+        libelle: (json['libelle'] ?? '').toString(),
+        annee: _i(json['annee'], DateTime.now().year),
+        moisDebut: _i(json['moisDebut'] ?? json['mois_debut'], 1),
+        dateDebut: (json['dateDebut'] ?? json['date_debut'] ?? '').toString(),
+        dateFin: (json['dateFin'] ?? json['date_fin'] ?? '').toString(),
+        statut: (json['statut'] ?? '').toString() == 'cloture'
             ? ExerciceStatus.cloture
             : ExerciceStatus.actif,
         budgetProvisoireTotal:
-            ((json['budgetProvisoireTotal'] ?? 0) as num).toDouble(),
+            _d(json['budgetProvisoireTotal'] ?? json['budget_provisoire_total']),
       );
 
   Map<String, dynamic> toJson() => {

@@ -311,9 +311,15 @@ class _CotisationList extends StatelessWidget {
     final s = (String k) => AppStrings.get(k, lang);
 
     if (cotisations.isEmpty) {
+      final raw = prov.rawCotisationsCount;
+      final diagMsg = raw < 0
+          ? s('cotisations.noCotisations')
+          : raw == 0
+              ? '${s('cotisations.noCotisations')}\n[DB: 0 lignes dans la table cotisations]'
+              : '${s('cotisations.noCotisations')}\n[DB: $raw lignes brutes, 0 parsées — erreur de format]';
       return EmptyState(
           icon: Icons.credit_card_rounded,
-          message: s('cotisations.noCotisations'));
+          message: diagMsg);
     }
 
     final total = cotisations.fold(0.0, (sum, c) => sum + c.montantTotal);

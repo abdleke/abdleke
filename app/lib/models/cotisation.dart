@@ -25,21 +25,40 @@ class Cotisation {
     this.commentaire,
   });
 
-  factory Cotisation.fromJson(Map<String, dynamic> json) => Cotisation(
-        id: (json['id'] ?? '').toString(),
-        membreId: (json['membreId'] ?? json['membre_id'] ?? '').toString(),
-        exerciceId: (json['exerciceId'] ?? json['exercice_id'] ?? '').toString(),
-        annee: (json['annee'] as num?)?.toInt() ?? DateTime.now().year,
-        montantTotal: ((json['montantTotal'] ?? json['montant_total'] ?? json['montant'] ?? 0) as num).toDouble(),
-        nombreEcheances: (json['nombreEcheances'] ?? json['nombre_echeances'] as num?)?.toInt() ?? 1,
-        dateDebut: (json['dateDebut'] ?? json['date_debut'] ?? '').toString(),
-        type: CotisationType.values.firstWhere(
-          (e) => e.name == (json['type'] ?? ''),
-          orElse: () => CotisationType.normale,
-        ),
-        projetId: (json['projetId'] ?? json['projet_id'])?.toString(),
-        commentaire: json['commentaire']?.toString(),
-      );
+  static int _i(dynamic v, [int fallback = 0]) {
+    if (v == null) return fallback;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString()) ?? fallback;
+  }
+
+  static double _d(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
+  factory Cotisation.fromJson(Map<String, dynamic> json) {
+    final anneeRaw = json['annee'];
+    final montantRaw = json['montantTotal'] ?? json['montant_total'] ?? json['montant'];
+    final nEchRaw = json['nombreEcheances'] ?? json['nombre_echeances'];
+    final nb = _i(nEchRaw, 1);
+
+    return Cotisation(
+      id: (json['id'] ?? '').toString(),
+      membreId: (json['membreId'] ?? json['membre_id'] ?? '').toString(),
+      exerciceId: (json['exerciceId'] ?? json['exercice_id'] ?? '').toString(),
+      annee: _i(anneeRaw, DateTime.now().year),
+      montantTotal: _d(montantRaw),
+      nombreEcheances: nb > 0 ? nb : 1,
+      dateDebut: (json['dateDebut'] ?? json['date_debut'] ?? '').toString(),
+      type: CotisationType.values.firstWhere(
+        (e) => e.name == (json['type'] ?? '').toString(),
+        orElse: () => CotisationType.normale,
+      ),
+      projetId: (json['projetId'] ?? json['projet_id'])?.toString(),
+      commentaire: json['commentaire']?.toString(),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
         'id': id,

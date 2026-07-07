@@ -19,11 +19,23 @@ class Echeance {
     required this.statut,
   });
 
+  static int _i(dynamic v, [int fallback = 0]) {
+    if (v == null) return fallback;
+    if (v is num) return v.toInt();
+    return int.tryParse(v.toString()) ?? fallback;
+  }
+
+  static double _d(dynamic v) {
+    if (v == null) return 0.0;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString()) ?? 0.0;
+  }
+
   factory Echeance.fromJson(Map<String, dynamic> json) => Echeance(
         id: (json['id'] ?? '').toString(),
         cotisationId: (json['cotisationId'] ?? json['cotisation_id'] ?? '').toString(),
-        numero: (json['numero'] as num?)?.toInt() ?? 1,
-        montant: ((json['montant'] ?? 0) as num).toDouble(),
+        numero: _i(json['numero'], 1),
+        montant: _d(json['montant']),
         dateEcheance: (json['dateEcheance'] ?? json['date_echeance'] ?? '').toString(),
         datePaiement: (json['datePaiement'] ?? json['date_paiement'])?.toString(),
         statut: _statusFromString((json['statut'] ?? 'en_attente').toString()),
