@@ -298,14 +298,7 @@ class _ProjectFormState extends State<_ProjectForm> {
                             DropdownMenuItem(value: ProjectType.normale, child: Text(s('projects.normale'), style: GoogleFonts.cairo())),
                             DropdownMenuItem(value: ProjectType.ponctuel, child: Text(s('projects.ponctuel'), style: GoogleFonts.cairo())),
                           ],
-                          onChanged: (v) => setState(() {
-                            _type = v!;
-                            if (_type == ProjectType.normale) {
-                              _exerciceId = context.read<AppProvider>().activeExercice?.id;
-                            } else {
-                              _exerciceId = null;
-                            }
-                          }),
+                          onChanged: (v) => setState(() => _type = v!),
                         )),
                         const SizedBox(width: 12),
                         Expanded(child: _dropdown<ProjectStatus>(
