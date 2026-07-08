@@ -10,6 +10,7 @@ import '../theme/app_theme.dart';
 import '../widgets/stat_card.dart';
 import '../widgets/member_avatar.dart';
 import 'reports_screen.dart';
+import 'exercice_detail_screen.dart';
 
 int _daysDiff(String dateStr) {
   return DateTime.parse(dateStr).difference(DateTime.now()).inDays;
@@ -64,6 +65,11 @@ class DashboardScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(s('app.name')),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.history_rounded),
+            tooltip: s('exercice.history'),
+            onPressed: () => _showExerciceHistory(context, prov, lang),
+          ),
           IconButton(
             icon: const Icon(Icons.bar_chart_rounded),
             tooltip: s('nav.reports'),
@@ -231,6 +237,114 @@ class DashboardScreen extends StatelessWidget {
           ),
           const SizedBox(height: 24),
         ],
+      ),
+    );
+  }
+
+  void _showExerciceHistory(BuildContext context, AppProvider prov, String lang) {
+    final s = (String k) => AppStrings.get(k, lang);
+    final exercices = [...prov.exercices]..sort((a, b) => b.annee.compareTo(a.annee));
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => DraggableScrollableSheet(
+        initialChildSize: 0.55,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        builder: (ctx, ctrl) => Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            children: [
+              const SizedBox(height: 8),
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.border, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 12),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(children: [
+                  Icon(Icons.history_rounded, color: AppTheme.primary, size: 20),
+                  const SizedBox(width: 8),
+                  Text(s('exercice.history'), style: GoogleFonts.cairo(fontSize: 16, fontWeight: FontWeight.w700)),
+                ]),
+              ),
+              const SizedBox(height: 12),
+              Expanded(
+                child: exercices.isEmpty
+                    ? Center(child: Text(s('common.noData'), style: GoogleFonts.cairo(color: AppTheme.textSecondary)))
+                    : ListView.separated(
+                        controller: ctrl,
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+                        itemCount: exercices.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (ctx, i) {
+                          final ex = exercices[i];
+                          final isActive = ex.statut.name == 'actif';
+                          final collected = prov.collecteExercice(ex.id);
+                          final budget = prov.budgetExercice(ex.id);
+                          return InkWell(
+                            borderRadius: BorderRadius.circular(12),
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              Navigator.push(context, MaterialPageRoute(
+                                builder: (_) => ExerciceDetailScreen(exerciceId: ex.id),
+                              ));
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: AppTheme.background,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: isActive ? AppTheme.primary.withValues(alpha: 0.4) : AppTheme.border),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(ex.libelle, style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w700)),
+                                        Text(ex.periode, style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textSecondary)),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          '${s('exercice.collected')}: ${collected.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)} ${prov.currency}',
+                                          style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.primary, fontWeight: FontWeight.w600),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: (isActive ? AppTheme.success : AppTheme.textSecondary).withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(8),
+                                        ),
+                                        child: Text(
+                                          isActive ? s('projects.active') : s('exercice.closed'),
+                                          style: GoogleFonts.cairo(fontSize: 10, fontWeight: FontWeight.w600,
+                                              color: isActive ? AppTheme.success : AppTheme.textSecondary),
+                                        ),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Icon(Icons.chevron_right_rounded, color: AppTheme.textSecondary, size: 20),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+              ),
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
       ),
     );
   }

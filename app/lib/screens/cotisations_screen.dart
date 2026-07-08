@@ -63,12 +63,11 @@ class _CotisationsScreenState extends State<CotisationsScreen>
           ],
         ),
         actions: [
-          if (prov.exercices.length > 1 || prov.exercices.any((e) => e.statut == ExerciceStatus.cloture))
-            IconButton(
-              icon: const Icon(Icons.history_rounded),
-              tooltip: s('exercice.history'),
-              onPressed: () => _showHistory(context, prov, lang),
-            ),
+          IconButton(
+            icon: const Icon(Icons.history_rounded),
+            tooltip: s('exercice.history'),
+            onPressed: () => _showHistory(context, prov, lang),
+          ),
           if (prov.canManageMembers())
             IconButton(
               icon: const Icon(Icons.calendar_month_rounded),
