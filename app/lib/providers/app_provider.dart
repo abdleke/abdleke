@@ -9,6 +9,7 @@ import '../models/depense.dart';
 import '../models/cotisation.dart';
 import '../models/exercice_annuel.dart';
 import '../models/echeance.dart';
+import '../models/budget_projet_exercice.dart';
 const _uuid = Uuid();
 
 class AppProvider extends ChangeNotifier {
@@ -18,6 +19,7 @@ class AppProvider extends ChangeNotifier {
   List<Cotisation> _cotisations = [];
   List<ExerciceAnnuel> _exercices = [];
   List<Echeance> _echeances = [];
+  List<BudgetProjetExercice> _budgetsProjets = [];
   String _currentUserId = '';
   String _language = 'ar';
   String _currency = 'درهم';
@@ -39,6 +41,7 @@ class AppProvider extends ChangeNotifier {
   StreamSubscription<List<Map<String, dynamic>>>? _cotisationsSub;
   StreamSubscription<List<Map<String, dynamic>>>? _exercicesSub;
   StreamSubscription<List<Map<String, dynamic>>>? _echeancesSub;
+  StreamSubscription<List<Map<String, dynamic>>>? _budgetsProjetsSub;
 
   List<Member> get members => List.unmodifiable(_members);
   List<Project> get projects => List.unmodifiable(_projects);
@@ -46,6 +49,7 @@ class AppProvider extends ChangeNotifier {
   List<Cotisation> get cotisations => List.unmodifiable(_cotisations);
   List<ExerciceAnnuel> get exercices => List.unmodifiable(_exercices);
   List<Echeance> get echeances => List.unmodifiable(_echeances);
+  List<BudgetProjetExercice> get budgetsProjets => List.unmodifiable(_budgetsProjets);
   String get currentUserId => _currentUserId;
   String get language => _language;
   String get currency => _currency;
@@ -123,6 +127,7 @@ class AppProvider extends ChangeNotifier {
       _safeSelect('cotisations'),
       _safeSelect('exercices'),
       _safeSelect('echeances'),
+      _safeSelect('budget_projet_exercice'),
     ]);
 
     final membersData = results[0];
@@ -133,16 +138,17 @@ class AppProvider extends ChangeNotifier {
       _initStatus = 'Aucun membre chargé — vérifier Supabase';
     }
 
-    _projects    = _parseList(results[1], Project.fromJson);
-    _depenses    = _parseList(results[2], Depense.fromJson);
+    _projects       = _parseList(results[1], Project.fromJson);
+    _depenses       = _parseList(results[2], Depense.fromJson);
     _rawCotisationsCount = results[3].length;
-    _cotisations = _parseList(results[3], Cotisation.fromJson);
+    _cotisations    = _parseList(results[3], Cotisation.fromJson);
     debugPrint('[Jamiyati] cotisations: $_rawCotisationsCount raw rows → ${_cotisations.length} parsed');
     if (results[3].isNotEmpty && _cotisations.isEmpty) {
       debugPrint('[Jamiyati] PREMIERE LIGNE COTISATION: ${results[3].first}');
     }
-    _exercices   = _parseList(results[4], ExerciceAnnuel.fromJson);
-    _echeances   = _parseList(results[5], Echeance.fromJson);
+    _exercices      = _parseList(results[4], ExerciceAnnuel.fromJson);
+    _echeances      = _parseList(results[5], Echeance.fromJson);
+    _budgetsProjets = _parseList(results[6], BudgetProjetExercice.fromJson);
 
     _setupStreams();
     _restoreSession(prefs);
@@ -152,6 +158,7 @@ class AppProvider extends ChangeNotifier {
   void _setupStreams() {
     _membersSub?.cancel(); _projectsSub?.cancel(); _depensesSub?.cancel();
     _cotisationsSub?.cancel(); _exercicesSub?.cancel(); _echeancesSub?.cancel();
+    _budgetsProjetsSub?.cancel();
 
     _membersSub = _db.from('members').stream(primaryKey: ['id']).listen((data) {
       _members = _parseList(data, Member.fromJson); notifyListeners();
@@ -173,6 +180,9 @@ class AppProvider extends ChangeNotifier {
     });
     _echeancesSub = _db.from('echeances').stream(primaryKey: ['id']).listen((data) {
       _echeances = _parseList(data, Echeance.fromJson); notifyListeners();
+    });
+    _budgetsProjetsSub = _db.from('budget_projet_exercice').stream(primaryKey: ['id']).listen((data) {
+      _budgetsProjets = _parseList(data, BudgetProjetExercice.fromJson); notifyListeners();
     });
   }
 
@@ -225,6 +235,7 @@ class AppProvider extends ChangeNotifier {
   void dispose() {
     _membersSub?.cancel(); _projectsSub?.cancel(); _depensesSub?.cancel();
     _cotisationsSub?.cancel(); _exercicesSub?.cancel(); _echeancesSub?.cancel();
+    _budgetsProjetsSub?.cancel();
     super.dispose();
   }
 
@@ -332,15 +343,35 @@ class AppProvider extends ChangeNotifier {
         .fold(0.0, (sum, e) => sum + e.montant);
   }
 
-  // Budget alloué aux projets normaux de l'exercice (somme des budgets de projet)
+  // Budget alloué aux projets normaux de l'exercice (table ternaire)
   double budgetAlloueExercice(String exerciceId) =>
-      _projects
-          .where((p) => p.exerciceId == exerciceId && p.type == ProjectType.normale)
-          .fold(0.0, (sum, p) => sum + p.budget);
+      _budgetsProjets
+          .where((b) => b.exerciceId == exerciceId)
+          .fold(0.0, (sum, b) => sum + b.budget);
 
   // Budget disponible = budget réel (cotisations) - budget alloué aux projets normaux
   double budgetDisponibleExercice(String exerciceId) =>
       budgetExercice(exerciceId) - budgetAlloueExercice(exerciceId);
+
+  // Budget d'un projet pour un exercice donné (table ternaire)
+  double getProjectBudgetForExercice(String projetId, String? exerciceId) {
+    if (exerciceId == null) return 0;
+    return _budgetsProjets
+        .where((b) => b.projetId == projetId && b.exerciceId == exerciceId)
+        .fold(0.0, (sum, b) => sum + b.budget);
+  }
+
+  // Budget effectif d'un projet : ternaire pour normale, budget fixe pour ponctuel
+  double getProjectEffectiveBudget(String projetId) {
+    final p = _projects.cast<Project?>().firstWhere((x) => x?.id == projetId, orElse: () => null);
+    if (p == null) return 0;
+    if (p.type == ProjectType.ponctuel) return p.budget;
+    return getProjectBudgetForExercice(projetId, activeExercice?.id);
+  }
+
+  List<BudgetProjetExercice> budgetsForProjet(String projetId) =>
+      _budgetsProjets.where((b) => b.projetId == projetId).toList()
+        ..sort((a, b) => a.exerciceId.compareTo(b.exerciceId));
 
   double getProjectCommitted(String projetId) =>
       _cotisations
@@ -441,8 +472,37 @@ class AppProvider extends ChangeNotifier {
   }
 
   void deleteProject(String id) {
+    final budgetIds = _budgetsProjets.where((b) => b.projetId == id).map((b) => b.id).toList();
     _projects = _projects.where((p) => p.id != id).toList();
-    notifyListeners(); _remove('projects', id);
+    _budgetsProjets = _budgetsProjets.where((b) => b.projetId != id).toList();
+    notifyListeners();
+    _remove('projects', id);
+    for (final bid in budgetIds) { _remove('budget_projet_exercice', bid); }
+  }
+
+  // ── Budget Projet × Exercice (relation ternaire) ───────────────
+
+  void addBudgetProjetExercice(BudgetProjetExercice b) {
+    // Remplace si entrée déjà existante pour ce projet+exercice
+    _budgetsProjets = [
+      ..._budgetsProjets.where((x) => !(x.projetId == b.projetId && x.exerciceId == b.exerciceId)),
+      b,
+    ];
+    notifyListeners();
+    _upsert('budget_projet_exercice', b.toJson());
+  }
+
+  void updateBudgetProjetExercice(BudgetProjetExercice b) {
+    final i = _budgetsProjets.indexWhere((x) => x.id == b.id); if (i < 0) return;
+    _budgetsProjets = List.of(_budgetsProjets)..[i] = b;
+    notifyListeners();
+    _upsert('budget_projet_exercice', b.toJson());
+  }
+
+  void removeBudgetProjetExercice(String id) {
+    _budgetsProjets = _budgetsProjets.where((b) => b.id != id).toList();
+    notifyListeners();
+    _remove('budget_projet_exercice', id);
   }
 
   // ── Dépenses ───────────────────────────────────────────────────

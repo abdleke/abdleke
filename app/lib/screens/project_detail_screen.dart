@@ -6,6 +6,7 @@ import '../l10n/strings.dart';
 import '../models/project.dart';
 import '../models/depense.dart';
 import '../models/member.dart';
+import '../models/budget_projet_exercice.dart';
 import '../theme/app_theme.dart';
 import '../widgets/budget_bar.dart';
 import '../widgets/status_badge.dart';
@@ -32,6 +33,7 @@ class ProjectDetailScreen extends StatelessWidget {
     final spent = prov.getProjectSpent(projectId);
     final committed = prov.getProjectCommitted(projectId);
     final collected = prov.getProjectCollected(projectId);
+    final effectiveBudget = prov.getProjectEffectiveBudget(projectId);
     final depenses = prov.visibleDepenses.where((d) => d.projetId == projectId).toList();
     final manager = prov.members.cast<dynamic>().firstWhere((m) => m.id == project.responsableId, orElse: () => null);
 
@@ -69,7 +71,9 @@ class ProjectDetailScreen extends StatelessWidget {
                 children: [
                   _InfoCard(
                     project: project,
+                    prov: prov,
                     spent: spent,
+                    effectiveBudget: effectiveBudget,
                     committed: committed,
                     collected: collected,
                     manager: manager,
@@ -104,18 +108,26 @@ class ProjectDetailScreen extends StatelessWidget {
 
 class _InfoCard extends StatelessWidget {
   final dynamic project;
+  final AppProvider prov;
   final double spent;
+  final double effectiveBudget;
   final double committed;
   final double collected;
   final dynamic manager;
   final String currency, lang;
 
-  const _InfoCard({required this.project, required this.spent, required this.committed, required this.collected, required this.manager, required this.currency, required this.lang});
+  const _InfoCard({
+    required this.project, required this.prov, required this.spent,
+    required this.effectiveBudget, required this.committed, required this.collected,
+    required this.manager, required this.currency, required this.lang,
+  });
 
   @override
   Widget build(BuildContext context) {
     final s = (String k) => AppStrings.get(k, lang);
     final isPonctuel = project.type == ProjectType.ponctuel;
+    final budgetsParExercice = isPonctuel ? <BudgetProjetExercice>[] : prov.budgetsForProjet(project.id as String);
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: AppTheme.border)),
@@ -125,13 +137,40 @@ class _InfoCard extends StatelessWidget {
           if (project.description?.isNotEmpty == true)
             Padding(padding: const EdgeInsets.only(bottom: 16), child: Text(project.description, style: GoogleFonts.cairo(fontSize: 14, color: AppTheme.textSecondary))),
           _row(s('projects.manager'), manager?.fullName ?? '—'),
-          _row(s('projects.startDate'), project.dateDebut),
-          if (project.dateFin != null) _row(s('projects.endDate'), project.dateFin),
+          if (isPonctuel) ...[
+            _row(s('projects.startDate'), project.dateDebut as String),
+            if (project.dateFin != null) _row(s('projects.endDate'), project.dateFin as String),
+          ],
           _row(s('projects.type'), isPonctuel ? s('projects.ponctuel') : s('projects.normale')),
           const SizedBox(height: 16),
           Text(s('projects.budgetUsage'), style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
           const SizedBox(height: 8),
-          BudgetBar(spent: spent, budget: project.budget, currency: currency),
+          BudgetBar(spent: spent, budget: effectiveBudget, currency: currency),
+          // Pour les projets normaux : liste des budgets par exercice
+          if (!isPonctuel && budgetsParExercice.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Text(s('projects.budgetByExercice'), style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 8),
+            ...budgetsParExercice.map((b) {
+              final ex = prov.exercices.cast<dynamic>().firstWhere((e) => e.id == b.exerciceId, orElse: () => null);
+              final label = ex?.libelle as String? ?? b.exerciceId;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 8, height: 8,
+                      decoration: BoxDecoration(color: AppTheme.primary, shape: BoxShape.circle),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(label, style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textSecondary))),
+                    Text('${b.budget.toStringAsFixed(0)} $currency',
+                        style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+                  ],
+                ),
+              );
+            }),
+          ],
           if (isPonctuel && committed > 0) ...[
             const SizedBox(height: 16),
             Text(s('projects.fundraising'), style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w600)),

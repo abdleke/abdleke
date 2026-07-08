@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../providers/app_provider.dart';
 import '../l10n/strings.dart';
 import '../models/project.dart';
+import '../models/budget_projet_exercice.dart';
 import '../theme/app_theme.dart';
 import '../widgets/budget_bar.dart';
 import '../widgets/empty_state.dart';
@@ -45,9 +46,11 @@ class ProjectsScreen extends StatelessWidget {
                   (m) => m.id == p.responsableId, orElse: () => null);
                 final pendingCount = prov.visibleDepenses.where((d) => d.projetId == p.id && d.statut.name == 'soumise').length;
 
+                final budget = prov.getProjectEffectiveBudget(p.id);
                 return _ProjectCard(
                   project: p,
                   spent: spent,
+                  budget: budget,
                   managerName: manager?.fullName ?? '—',
                   pendingCount: pendingCount,
                   currency: prov.currency,
@@ -90,13 +93,15 @@ class ProjectsScreen extends StatelessWidget {
 class _ProjectCard extends StatelessWidget {
   final Project project;
   final double spent;
+  final double budget;
   final String managerName, currency, lang;
   final int pendingCount;
   final VoidCallback onTap;
   final VoidCallback? onEdit, onDelete;
 
   const _ProjectCard({
-    required this.project, required this.spent, required this.managerName,
+    required this.project, required this.spent, required this.budget,
+    required this.managerName,
     required this.pendingCount, required this.currency, required this.lang,
     required this.onTap, this.onEdit, this.onDelete,
   });
@@ -104,7 +109,7 @@ class _ProjectCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final s = (String k) => AppStrings.get(k, lang);
-    final isOverdue = spent > project.budget;
+    final isOverdue = budget > 0 && spent > budget;
 
     return InkWell(
       onTap: onTap,
@@ -164,7 +169,7 @@ class _ProjectCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            BudgetBar(spent: spent, budget: project.budget, currency: currency),
+            BudgetBar(spent: spent, budget: budget, currency: currency),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -219,10 +224,10 @@ class _ProjectFormState extends State<_ProjectForm> {
   late String _nom, _description, _dateDebut, _responsableId;
   String? _dateFin;
   double _budget = 0;
+  double _budgetExerciceActif = 0; // pour projets normaux
   double? _cotisationDediee;
   ProjectType _type = ProjectType.normale;
   ProjectStatus _statut = ProjectStatus.actif;
-  String? _exerciceId;
 
   @override
   void initState() {
@@ -238,7 +243,13 @@ class _ProjectFormState extends State<_ProjectForm> {
     _type = p?.type ?? ProjectType.normale;
     _statut = p?.statut ?? ProjectStatus.actif;
     _responsableId = p?.responsableId ?? '';
-    _exerciceId = p?.exerciceId ?? prov.activeExercice?.id;
+    // Pré-remplir le budget de l'exercice actif pour un projet existant
+    if (p != null && _type == ProjectType.normale) {
+      final activeId = prov.activeExercice?.id;
+      if (activeId != null) {
+        _budgetExerciceActif = prov.getProjectBudgetForExercice(p.id, activeId);
+      }
+    }
   }
 
   @override
@@ -309,20 +320,31 @@ class _ProjectFormState extends State<_ProjectForm> {
                         )),
                       ]),
                       const SizedBox(height: 12),
-                      Row(children: [
-                        Expanded(child: _field(s('projects.budget'), initial: _budget > 0 ? _budget.toStringAsFixed(0) : '', keyboardType: TextInputType.number, onSave: (v) => _budget = double.tryParse(v ?? '0') ?? 0)),
-                        if (_type == ProjectType.ponctuel) ...[
+                      // Dates : seulement pour les projets ponctuels
+                      if (_type == ProjectType.ponctuel) ...[
+                        Row(children: [
+                          Expanded(child: _field(s('projects.budget'), initial: _budget > 0 ? _budget.toStringAsFixed(0) : '', keyboardType: TextInputType.number, onSave: (v) => _budget = double.tryParse(v ?? '0') ?? 0)),
                           const SizedBox(width: 12),
                           Expanded(child: _field(s('projects.dedicatedFee'), initial: _cotisationDediee?.toStringAsFixed(0) ?? '', keyboardType: TextInputType.number, onSave: (v) => _cotisationDediee = double.tryParse(v ?? ''))),
-                        ],
-                      ]),
-                      const SizedBox(height: 12),
-                      Row(children: [
-                        Expanded(child: _field(s('projects.startDate'), initial: _dateDebut, onSave: (v) => _dateDebut = v ?? '')),
-                        const SizedBox(width: 12),
-                        Expanded(child: _field(s('projects.endDate'), initial: _dateFin ?? '', onSave: (v) => _dateFin = v?.isEmpty == true ? null : v)),
-                      ]),
-                      const SizedBox(height: 12),
+                        ]),
+                        const SizedBox(height: 12),
+                        Row(children: [
+                          Expanded(child: _field(s('projects.startDate'), initial: _dateDebut, onSave: (v) => _dateDebut = v ?? '')),
+                          const SizedBox(width: 12),
+                          Expanded(child: _field(s('projects.endDate'), initial: _dateFin ?? '', onSave: (v) => _dateFin = v?.isEmpty == true ? null : v)),
+                        ]),
+                        const SizedBox(height: 12),
+                      ],
+                      // Budget par exercice : seulement pour les projets normaux
+                      if (_type == ProjectType.normale) ...[
+                        _BudgetExerciceField(
+                          prov: prov,
+                          initialBudget: _budgetExerciceActif,
+                          lang: lang,
+                          onSave: (v) => _budgetExerciceActif = v,
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                       DropdownButtonFormField<String>(
                         value: _responsableId.isNotEmpty ? _responsableId : null,
                         decoration: InputDecoration(labelText: s('projects.manager'), labelStyle: GoogleFonts.cairo()),
@@ -339,16 +361,41 @@ class _ProjectFormState extends State<_ProjectForm> {
                           onPressed: () {
                             if (_formKey.currentState?.validate() != true) return;
                             _formKey.currentState?.save();
+                            final projectId = widget.existing?.id ?? prov.newId();
                             final project = Project(
-                              id: widget.existing?.id ?? prov.newId(),
+                              id: projectId,
                               nom: _nom, description: _description,
-                              type: _type, budget: _budget,
-                              dateDebut: _dateDebut, dateFin: _dateFin,
+                              type: _type,
+                              budget: _type == ProjectType.ponctuel ? _budget : 0,
+                              dateDebut: _type == ProjectType.ponctuel ? _dateDebut : '',
+                              dateFin: _type == ProjectType.ponctuel ? _dateFin : null,
                               statut: _statut, responsableId: _responsableId,
                               cotisationDediee: _type == ProjectType.ponctuel ? _cotisationDediee : null,
-                              exerciceId: _type == ProjectType.normale ? _exerciceId : null,
+                              exerciceId: null,
                             );
-                            if (widget.existing != null) prov.updateProject(project); else prov.addProject(project);
+                            if (widget.existing != null) {
+                              prov.updateProject(project);
+                            } else {
+                              prov.addProject(project);
+                            }
+                            // Sauvegarder le budget de l'exercice actif pour les projets normaux
+                            if (_type == ProjectType.normale && _budgetExerciceActif > 0) {
+                              final activeExercice = prov.activeExercice;
+                              if (activeExercice != null) {
+                                final existing = prov.budgetsProjets.cast<BudgetProjetExercice?>()
+                                    .firstWhere((b) => b?.projetId == projectId && b?.exerciceId == activeExercice.id, orElse: () => null);
+                                if (existing != null) {
+                                  prov.updateBudgetProjetExercice(existing.copyWith(budget: _budgetExerciceActif));
+                                } else {
+                                  prov.addBudgetProjetExercice(BudgetProjetExercice(
+                                    id: prov.newId(),
+                                    projetId: projectId,
+                                    exerciceId: activeExercice.id,
+                                    budget: _budgetExerciceActif,
+                                  ));
+                                }
+                              }
+                            }
                             Navigator.pop(ctx);
                           },
                           child: Text(s('common.save'), style: GoogleFonts.cairo()),
@@ -386,6 +433,65 @@ class _ProjectFormState extends State<_ProjectForm> {
       items: items,
       onChanged: onChanged,
       style: GoogleFonts.cairo(color: AppTheme.textPrimary),
+    );
+  }
+}
+
+// Widget champ budget pour l'exercice actif (projets normaux)
+class _BudgetExerciceField extends StatelessWidget {
+  final AppProvider prov;
+  final double initialBudget;
+  final String lang;
+  final ValueChanged<double> onSave;
+
+  const _BudgetExerciceField({
+    required this.prov, required this.initialBudget,
+    required this.lang, required this.onSave,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final s = (String k) => AppStrings.get(k, lang);
+    final exercice = prov.activeExercice;
+    final label = exercice != null
+        ? '${s('projects.budget')} — ${exercice.libelle}'
+        : s('projects.budget');
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppTheme.primaryLight,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(children: [
+            Icon(Icons.calendar_month_rounded, size: 14, color: AppTheme.primary),
+            const SizedBox(width: 6),
+            Text(
+              exercice?.libelle ?? s('exercice.noActive'),
+              style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600),
+            ),
+          ]),
+          const SizedBox(height: 8),
+          TextFormField(
+            initialValue: initialBudget > 0 ? initialBudget.toStringAsFixed(0) : '',
+            keyboardType: TextInputType.number,
+            decoration: InputDecoration(
+              labelText: label,
+              labelStyle: GoogleFonts.cairo(),
+              suffixText: prov.currency,
+              suffixStyle: GoogleFonts.cairo(color: AppTheme.primary, fontWeight: FontWeight.w700),
+              helperText: s('projects.budgetExerciceHint'),
+              helperStyle: GoogleFonts.cairo(fontSize: 11),
+            ),
+            style: GoogleFonts.cairo(),
+            onSaved: (v) => onSave(double.tryParse(v ?? '0') ?? 0),
+          ),
+        ],
+      ),
     );
   }
 }
