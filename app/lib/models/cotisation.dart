@@ -67,8 +67,9 @@ class Cotisation {
         'annee': annee,
         'montant': montantTotal,       // colonne NOT NULL existante dans Supabase
         'montantTotal': montantTotal,
-        'frequence': nombreEcheances,  // colonne NOT NULL existante dans Supabase
+        'frequence': nombreEcheances,       // colonne NOT NULL existante dans Supabase
         'nombreEcheances': nombreEcheances,
+        'dateDeclaration': dateDebut,       // colonne NOT NULL existante dans Supabase
         'dateDebut': dateDebut,
         'type': type.name,
         'projetId': projetId,
