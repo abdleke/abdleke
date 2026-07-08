@@ -65,6 +65,7 @@ class Cotisation {
         'membreId': membreId,
         'exerciceId': exerciceId,
         'annee': annee,
+        'montant': montantTotal,       // colonne NOT NULL existante dans Supabase
         'montantTotal': montantTotal,
         'nombreEcheances': nombreEcheances,
         'dateDebut': dateDebut,
