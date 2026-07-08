@@ -373,6 +373,24 @@ class AppProvider extends ChangeNotifier {
       _budgetsProjets.where((b) => b.projetId == projetId).toList()
         ..sort((a, b) => a.exerciceId.compareTo(b.exerciceId));
 
+  // Projets normaux liés à un exercice, avec leur budget et dépenses
+  List<({Project projet, double budget, double depenses})> projetsResume(String exerciceId) {
+    final entries = _budgetsProjets.where((b) => b.exerciceId == exerciceId);
+    return entries.map((b) {
+      final p = _projects.cast<Project?>().firstWhere((x) => x?.id == b.projetId, orElse: () => null);
+      if (p == null) return null;
+      final spent = _depenses
+          .where((d) => d.projetId == p.id && d.statut == DepenseStatus.approuvee)
+          .fold(0.0, (s, d) => s + d.montant);
+      return (projet: p, budget: b.budget, depenses: spent);
+    }).whereType<({Project projet, double budget, double depenses})>().toList()
+      ..sort((a, b) => a.projet.nom.compareTo(b.projet.nom));
+  }
+
+  // Total dépenses approuvées sur les projets normaux d'un exercice
+  double depensesTotalesExercice(String exerciceId) =>
+      projetsResume(exerciceId).fold(0.0, (s, r) => s + r.depenses);
+
   double getProjectCommitted(String projetId) =>
       _cotisations
           .where((c) => c.projetId == projetId && c.type == CotisationType.dediee)

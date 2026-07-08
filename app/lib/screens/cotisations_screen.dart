@@ -11,6 +11,7 @@ import '../models/project.dart';
 import '../theme/app_theme.dart';
 import '../widgets/status_badge.dart';
 import '../widgets/empty_state.dart';
+import 'exercice_detail_screen.dart';
 
 class CotisationsScreen extends StatefulWidget {
   const CotisationsScreen({super.key});
@@ -1071,6 +1072,28 @@ class _ExerciceHistorySheet extends StatelessWidget {
                               Text('${(pct * 100).toStringAsFixed(0)}% ${s('cotisations.totalCollected')}',
                                   style: GoogleFonts.cairo(fontSize: 10, color: AppTheme.textSecondary)),
                             ],
+                            const SizedBox(height: 10),
+                            SizedBox(
+                              width: double.infinity,
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  Navigator.pop(context);
+                                  Navigator.push(context, MaterialPageRoute(
+                                    builder: (_) => ExerciceDetailScreen(exerciceId: ex.id),
+                                  ));
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: AppTheme.primary,
+                                  side: BorderSide(color: AppTheme.primary.withValues(alpha: 0.4)),
+                                  padding: const EdgeInsets.symmetric(vertical: 6),
+                                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  minimumSize: const Size(0, 32),
+                                ),
+                                icon: const Icon(Icons.bar_chart_rounded, size: 14),
+                                label: Text(s('exercice.viewDetail'),
+                                    style: GoogleFonts.cairo(fontSize: 12)),
+                              ),
+                            ),
                           ],
                         ),
                       );
