@@ -157,8 +157,8 @@ class AppProvider extends ChangeNotifier {
     _cotisationsSub?.cancel(); _exercicesSub?.cancel(); _echeancesSub?.cancel();
     _budgetsProjetsSub?.cancel();
 
-    void onErr(String table) => (Object e, StackTrace st) =>
-        debugPrint('[Jamiyati] stream error ($table): $e');
+    void Function(Object, StackTrace) onErr(String table) =>
+        (Object e, StackTrace st) => debugPrint('[Jamiyati] stream error ($table): $e');
 
     _membersSub = _db.from('members').stream(primaryKey: ['id']).listen(
       (data) { _members = _parseList(data, Member.fromJson); notifyListeners(); },
