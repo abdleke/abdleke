@@ -48,7 +48,7 @@ class Project {
           orElse: () => ProjectStatus.actif,
         ),
         responsableId: (json['responsableId'] ?? json['responsable_id'] ?? '').toString(),
-        cotisationDediee: json['cotisationDediee'] ?? json['cotisation_dediee'] != null
+        cotisationDediee: (json['cotisationDediee'] ?? json['cotisation_dediee']) != null
             ? _d(json['cotisationDediee'] ?? json['cotisation_dediee'])
             : null,
         exerciceId: (json['exerciceId'] ?? json['exercice_id'])?.toString(),

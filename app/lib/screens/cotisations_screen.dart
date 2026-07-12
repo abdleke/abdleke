@@ -888,11 +888,18 @@ class _CotisationFormState extends State<_CotisationForm> {
                       if (_key.currentState?.validate() != true) return;
                       _key.currentState?.save();
                       final exercice = prov.activeExercice;
+                      if (exercice == null) {
+                        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                          content: Text(s('exercice.noActive'), style: GoogleFonts.cairo()),
+                          backgroundColor: AppTheme.danger,
+                        ));
+                        return;
+                      }
                       final ok = await prov.addCotisation(Cotisation(
                         id: prov.newId(),
                         membreId: _membreId,
-                        exerciceId: exercice?.id ?? '',
-                        annee: exercice?.annee ?? DateTime.now().year,
+                        exerciceId: exercice.id,
+                        annee: exercice.annee,
                         montantTotal: _montantTotal,
                         nombreEcheances: _nombreEcheances,
                         dateDebut: _dateDebut,

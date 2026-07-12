@@ -103,7 +103,7 @@ class ReportsScreen extends StatelessWidget {
                   children: [
                     Text(t.$1.nom, style: GoogleFonts.cairo(fontSize: 14, fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
-                    BudgetBar(spent: t.$2, budget: t.$1.budget, currency: prov.currency),
+                    BudgetBar(spent: t.$2, budget: prov.getProjectEffectiveBudget(t.$1.id), currency: prov.currency),
                   ],
                 ),
               ),

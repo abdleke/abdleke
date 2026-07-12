@@ -59,7 +59,7 @@ class ExerciceDetailScreen extends StatelessWidget {
                   Text(exercice.periode,
                       style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textSecondary)),
                   const Spacer(),
-                  _StatusChip(exercice.statut),
+                  _StatusChip(exercice.statut, lang),
                 ]),
                 const SizedBox(height: 16),
                 // Budget provisoire vs réel
@@ -223,7 +223,8 @@ class _Pill extends StatelessWidget {
 
 class _StatusChip extends StatelessWidget {
   final ExerciceStatus statut;
-  const _StatusChip(this.statut);
+  final String lang;
+  const _StatusChip(this.statut, this.lang);
 
   @override
   Widget build(BuildContext context) {
@@ -236,8 +237,8 @@ class _StatusChip extends StatelessWidget {
       ),
       child: Text(
         isActive
-            ? AppStrings.get('projects.active', 'fr')
-            : AppStrings.get('exercice.closed', 'fr'),
+            ? AppStrings.get('projects.active', lang)
+            : AppStrings.get('exercice.closed', lang),
         style: GoogleFonts.cairo(
             fontSize: 10,
             fontWeight: FontWeight.w600,
@@ -299,7 +300,7 @@ class _ProjetRow extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${AppStrings.get('projects.budget', lang)}: ${depenses.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)} $currency',
+                '${AppStrings.get('expenses.title', lang)}: ${depenses.toStringAsFixed(0)} / ${budget.toStringAsFixed(0)} $currency',
                 style: GoogleFonts.cairo(fontSize: 11, color: AppTheme.textSecondary),
               ),
               Text(

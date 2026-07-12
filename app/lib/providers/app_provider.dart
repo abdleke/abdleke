@@ -10,6 +10,7 @@ import '../models/cotisation.dart';
 import '../models/exercice_annuel.dart';
 import '../models/echeance.dart';
 import '../models/budget_projet_exercice.dart';
+import '../l10n/strings.dart';
 const _uuid = Uuid();
 
 class AppProvider extends ChangeNotifier {
@@ -108,11 +109,7 @@ class AppProvider extends ChangeNotifier {
     }
 
     try {
-      final check = await _db.from('members').select('id').limit(1);
-      if ((check as List).isEmpty) {
-        _initEmpty();
-        await _db.from('members').insert(_members.first.toJson());
-      }
+      await _db.from('members').select('id').limit(1);
     } catch (e) {
       _initStatus = 'Erreur connexion: $e';
       debugPrint('[Jamiyati] Erreur init membres: $e');
@@ -160,52 +157,44 @@ class AppProvider extends ChangeNotifier {
     _cotisationsSub?.cancel(); _exercicesSub?.cancel(); _echeancesSub?.cancel();
     _budgetsProjetsSub?.cancel();
 
-    _membersSub = _db.from('members').stream(primaryKey: ['id']).listen((data) {
-      _members = _parseList(data, Member.fromJson); notifyListeners();
-    });
-    _projectsSub = _db.from('projects').stream(primaryKey: ['id']).listen((data) {
-      _projects = _parseList(data, Project.fromJson); notifyListeners();
-    });
-    _depensesSub = _db.from('depenses').stream(primaryKey: ['id']).listen((data) {
-      _depenses = _parseList(data, Depense.fromJson); notifyListeners();
-    });
-    _cotisationsSub = _db.from('cotisations').stream(primaryKey: ['id']).listen((data) {
-      _rawCotisationsCount = data.length;
-      _cotisations = _parseList(data, Cotisation.fromJson);
-      debugPrint('[Jamiyati] cotisations stream: ${data.length} raw → ${_cotisations.length} parsed');
-      notifyListeners();
-    });
-    _exercicesSub = _db.from('exercices').stream(primaryKey: ['id']).listen((data) {
-      _exercices = _parseList(data, ExerciceAnnuel.fromJson); notifyListeners();
-    });
-    _echeancesSub = _db.from('echeances').stream(primaryKey: ['id']).listen((data) {
-      _echeances = _parseList(data, Echeance.fromJson); notifyListeners();
-    });
-    _budgetsProjetsSub = _db.from('budget_projet_exercice').stream(primaryKey: ['id']).listen((data) {
-      _budgetsProjets = _parseList(data, BudgetProjetExercice.fromJson); notifyListeners();
-    });
+    void onErr(String table) => (Object e, StackTrace st) =>
+        debugPrint('[Jamiyati] stream error ($table): $e');
+
+    _membersSub = _db.from('members').stream(primaryKey: ['id']).listen(
+      (data) { _members = _parseList(data, Member.fromJson); notifyListeners(); },
+      onError: onErr('members'),
+    );
+    _projectsSub = _db.from('projects').stream(primaryKey: ['id']).listen(
+      (data) { _projects = _parseList(data, Project.fromJson); notifyListeners(); },
+      onError: onErr('projects'),
+    );
+    _depensesSub = _db.from('depenses').stream(primaryKey: ['id']).listen(
+      (data) { _depenses = _parseList(data, Depense.fromJson); notifyListeners(); },
+      onError: onErr('depenses'),
+    );
+    _cotisationsSub = _db.from('cotisations').stream(primaryKey: ['id']).listen(
+      (data) {
+        _rawCotisationsCount = data.length;
+        _cotisations = _parseList(data, Cotisation.fromJson);
+        debugPrint('[Jamiyati] cotisations stream: ${data.length} raw → ${_cotisations.length} parsed');
+        notifyListeners();
+      },
+      onError: onErr('cotisations'),
+    );
+    _exercicesSub = _db.from('exercices').stream(primaryKey: ['id']).listen(
+      (data) { _exercices = _parseList(data, ExerciceAnnuel.fromJson); notifyListeners(); },
+      onError: onErr('exercices'),
+    );
+    _echeancesSub = _db.from('echeances').stream(primaryKey: ['id']).listen(
+      (data) { _echeances = _parseList(data, Echeance.fromJson); notifyListeners(); },
+      onError: onErr('echeances'),
+    );
+    _budgetsProjetsSub = _db.from('budget_projet_exercice').stream(primaryKey: ['id']).listen(
+      (data) { _budgetsProjets = _parseList(data, BudgetProjetExercice.fromJson); notifyListeners(); },
+      onError: onErr('budget_projet_exercice'),
+    );
   }
 
-  void _initEmpty() {
-    final today = DateTime.now().toIso8601String().split('T')[0];
-    _members = [
-      Member(
-        id: 'admin-init',
-        prenom: 'Admin',
-        nom: '',
-        telephone: '0661234567',
-        dateAdhesion: today,
-        statut: MemberStatus.actif,
-        role: MemberRole.admin,
-        motDePasse: 'admin123',
-      ),
-    ];
-    _projects = [];
-    _depenses = [];
-    _cotisations = [];
-    _exercices = [];
-    _echeances = [];
-  }
 
   Future<void> resetData() async {
     // Keep members and projects, only clear financial data
@@ -266,13 +255,13 @@ class AppProvider extends ChangeNotifier {
   }
 
   String _err(String code) {
-    const msgs = {
-      'emptyFields': 'الرجاء ملء جميع الحقول',
-      'notFound': 'المستخدم غير موجود',
-      'suspended': 'هذا الحساب موقوف',
-      'wrongPassword': 'كلمة المرور غير صحيحة',
+    const keys = {
+      'emptyFields': 'auth.errEmpty',
+      'notFound': 'auth.errNotFound',
+      'suspended': 'auth.errSuspended',
+      'wrongPassword': 'auth.errWrongPassword',
     };
-    return msgs[code] ?? code;
+    return AppStrings.get(keys[code] ?? code, _language);
   }
 
   // ── Permissions ────────────────────────────────────────────────
@@ -553,11 +542,18 @@ class AppProvider extends ChangeNotifier {
   // ── Exercices ──────────────────────────────────────────────────
 
   void addExercice(ExerciceAnnuel e) {
-    _exercices = _exercices.map((x) =>
-      x.statut == ExerciceStatus.actif ? x.copyWith(statut: ExerciceStatus.cloture) : x).toList();
+    ExerciceAnnuel? closed;
+    _exercices = _exercices.map((x) {
+      if (x.statut == ExerciceStatus.actif) {
+        closed = x.copyWith(statut: ExerciceStatus.cloture);
+        return closed!;
+      }
+      return x;
+    }).toList();
     _exercices = [..._exercices, e];
     notifyListeners();
-    for (final x in _exercices) { _upsert('exercices', x.toJson()); }
+    if (closed != null) _upsert('exercices', closed!.toJson());
+    _upsert('exercices', e.toJson());
   }
 
   void updateExercice(ExerciceAnnuel e) {
@@ -575,13 +571,21 @@ class AppProvider extends ChangeNotifier {
     notifyListeners();
     final ok = await _upsert('cotisations', c.toJson());
     if (!ok) {
-      // Rollback local state on failure
       _cotisations = _cotisations.where((x) => x.id != c.id).toList();
       _echeances = _echeances.where((e) => e.cotisationId != c.id).toList();
       notifyListeners();
       return false;
     }
-    for (final e in echeancesNouv) { await _upsert('echeances', e.toJson()); }
+    for (final e in echeancesNouv) {
+      final eOk = await _upsert('echeances', e.toJson());
+      if (!eOk) {
+        _cotisations = _cotisations.where((x) => x.id != c.id).toList();
+        _echeances = _echeances.where((e) => e.cotisationId != c.id).toList();
+        notifyListeners();
+        _remove('cotisations', c.id);
+        return false;
+      }
+    }
     return true;
   }
 

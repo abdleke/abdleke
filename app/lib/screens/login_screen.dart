@@ -164,58 +164,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
                 const SizedBox(height: 24),
 
-                // Default credentials hint
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primaryLight,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Icons.info_outline_rounded, color: AppTheme.primary, size: 18),
-                          const SizedBox(width: 8),
-                          Text(s('auth.defaultCredentials'), style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primary)),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      _credRow(Icons.phone_android_rounded, s('auth.identifier'), '0661234567'),
-                      const SizedBox(height: 6),
-                      _credRow(Icons.lock_outline_rounded, s('auth.password'), 'admin123'),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 12),
-
-                // Diagnostic Supabase
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppTheme.border),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.info_outline, size: 14, color: Colors.grey),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          prov.initStatus,
-                          style: GoogleFonts.cairo(fontSize: 11, color: Colors.grey[600]),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 20),
-
                 // Language switcher
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -233,17 +181,6 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
       ),
-    );
-  }
-
-  Widget _credRow(IconData icon, String label, String value) {
-    return Row(
-      children: [
-        Icon(icon, size: 14, color: AppTheme.primary),
-        const SizedBox(width: 6),
-        Text('$label: ', style: GoogleFonts.cairo(fontSize: 12, color: AppTheme.textSecondary)),
-        Text(value, style: GoogleFonts.cairo(fontSize: 13, fontWeight: FontWeight.w800, color: AppTheme.primary)),
-      ],
     );
   }
 
